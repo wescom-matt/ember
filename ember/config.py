@@ -35,6 +35,17 @@ OLLAMA_STREAM_IDLE_TIMEOUT_SEC = 300
 OLLAMA_MAX_STREAM_LINES = 50_000
 MAX_HTTP_BYTES = 2_000_000
 
+# Phase 2 command execution limits.
+MAX_TOOL_STEPS = 4
+COMMAND_TIMEOUT_SEC = 120
+SSH_CONNECT_TIMEOUT_SEC = 10
+MAX_COMMAND_CHARS = 2_000
+MAX_OUTPUT_STORE = 8_000
+MAX_OUTPUT_TO_MODEL = 2_500
+MAX_TARGETS = 50
+MAX_CREDENTIALS = 50
+MAX_CONTEXT_CHARS = 24_000
+
 
 def require_loopback_url(url: str, name: str) -> str:
     """Accept only http://127.0.0.1[:port] origins with no credentials or path."""
@@ -78,6 +89,7 @@ class Settings:
     host: str
     port: int
     secure_cookies: bool
+    secret_key_file: Path = Path("~/.config/ember/secret.key")
 
     @property
     def db_path(self) -> Path:
@@ -94,4 +106,7 @@ def load_settings() -> Settings:
         host=_env("EMBER_HOST", "127.0.0.1"),
         port=_env_int("EMBER_PORT", DEFAULT_PORT, 1024, 65535),
         secure_cookies=_env("EMBER_SECURE_COOKIES", "1") == "1",
+        secret_key_file=Path(_env("EMBER_SECRET_KEY_FILE", str(Path.home() / ".config/ember/secret.key")))
+        .expanduser()
+        .resolve(),
     )

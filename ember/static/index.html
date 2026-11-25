@@ -65,6 +65,8 @@
           <select id="model-select" title="Model"></select>
           <select id="kb-select" title="Knowledge base"></select>
           <label class="toggle" title="Let thinking models reason first (slower)"><input id="think-toggle" type="checkbox"><span>Think</span></label>
+          <label id="exec-wrap" class="toggle exec hidden" title="Let Ember run commands on the selected target"><input id="exec-toggle" type="checkbox"><span>Commands</span></label>
+          <select id="target-select" class="hidden" title="Where commands run"></select>
           <span class="spacer"></span>
           <button id="send-btn" type="submit" class="send" title="Send (Enter)"><svg class="ico"><use href="#i-up"/></svg></button>
         </div>
@@ -74,16 +76,47 @@
   </section>
 </div>
 
-<dialog id="admin-dlg" class="dlg">
-  <div class="dlg-head"><h3>Users</h3><button class="btn ghost small" data-close>Close</button></div>
-  <table class="users"><thead><tr><th>User</th><th>Admin</th><th>Active</th><th></th></tr></thead><tbody id="users-body"></tbody></table>
-  <form id="add-user" class="add-user">
-    <h4>Add a user</h4>
-    <input id="nu-name" placeholder="username" maxlength="32" autocomplete="off" required>
-    <input id="nu-pass" type="password" placeholder="password (10+ chars)" minlength="10" maxlength="256" autocomplete="new-password" required>
-    <label class="toggle"><input id="nu-admin" type="checkbox"><span>Admin</span></label>
-    <button class="btn primary" type="submit">Add</button>
-  </form>
+<dialog id="admin-dlg" class="dlg wide">
+  <div class="dlg-head"><div class="tabs"><button class="tab active" data-tab="users">Users</button><button class="tab" data-tab="targets">Targets &amp; credentials</button><button class="tab" data-tab="audit">Audit log</button></div><button class="btn ghost small" data-close autofocus>Close</button></div>
+  <section id="tab-users" class="tabpane">
+    <table class="users"><thead><tr><th>User</th><th>Admin</th><th>Active</th><th>Run commands</th><th></th></tr></thead><tbody id="users-body"></tbody></table>
+    <form id="add-user" class="add-user">
+      <h4>Add a user</h4>
+      <input id="nu-name" placeholder="username" maxlength="32" autocomplete="off" required>
+      <input id="nu-pass" type="password" placeholder="password (10+ chars)" minlength="10" maxlength="256" autocomplete="new-password" required>
+      <label class="toggle"><input id="nu-admin" type="checkbox"><span>Admin</span></label>
+      <button class="btn primary" type="submit">Add</button>
+    </form>
+  </section>
+  <section id="tab-targets" class="tabpane hidden">
+    <div class="master"><div><strong>Command running</strong><div class="muted small-text">Master switch for everyone. Off means the model can never run anything.</div></div>
+      <label class="switch"><input id="master-toggle" type="checkbox"><span id="master-label">Off</span></label></div>
+    <h4>Targets</h4>
+    <table class="users"><thead><tr><th>Name</th><th>Where</th><th>Login</th><th>Host key</th><th>On</th><th></th></tr></thead><tbody id="targets-body"></tbody></table>
+    <form id="add-target" class="add-user">
+      <select id="nt-kind"><option value="ssh">SSH</option><option value="local">This computer (P1)</option></select>
+      <input id="nt-name" placeholder="name (e.g. Mint)" maxlength="40" required>
+      <input id="nt-host" class="ssh-only" placeholder="host or IP" maxlength="253">
+      <input id="nt-port" class="ssh-only port" type="number" min="1" max="65535" value="22">
+      <input id="nt-user" class="ssh-only" placeholder="user" maxlength="64">
+      <select id="nt-os" class="ssh-only"><option value="linux">Linux (bash)</option><option value="windows">Windows (PowerShell)</option></select>
+      <select id="nt-cred" class="ssh-only"></select>
+      <button class="btn primary" type="submit">Add target</button>
+    </form>
+    <h4>Credentials</h4>
+    <div id="creds-list"></div>
+    <form id="add-cred" class="add-user">
+      <input id="nc-name" placeholder="credential name" maxlength="40" required>
+      <select id="nc-kind"><option value="key">Generate SSH key (recommended)</option><option value="password">Password</option></select>
+      <input id="nc-pass" class="hidden" type="password" placeholder="password" maxlength="256" autocomplete="new-password">
+      <button class="btn primary" type="submit">Add credential</button>
+    </form>
+  </section>
+  <section id="tab-audit" class="tabpane hidden">
+    <table class="users audit"><thead><tr><th>When</th><th>User</th><th>Target</th><th>Command</th><th>Risk</th><th>Result</th></tr></thead><tbody id="audit-body"></tbody></table>
+    <h4>Security events</h4>
+    <table class="users audit"><thead><tr><th>When</th><th>User</th><th>Event</th><th>Detail</th></tr></thead><tbody id="events-body"></tbody></table>
+  </section>
   <p id="admin-msg" class="muted small-text" role="status"></p>
 </dialog>
 

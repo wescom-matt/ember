@@ -11,7 +11,7 @@
     "Explain LoRa spreading factor vs range and battery life",
     "Write a Python script that logs a serial port to a CSV file"
   ];
-  var state = { me: null, models: [], defaultModel: "", kbs: [], chats: [], current: null, abort: null, searchTimer: 0 };
+  var state = { caps: { exec: false }, targets: [], me: null, models: [], defaultModel: "", kbs: [], chats: [], current: null, abort: null, searchTimer: 0 };
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -46,7 +46,7 @@
     $("app-view").classList.remove("hidden");
     $("me-name").textContent = me.username;
     $("admin-btn").classList.toggle("hidden", !me.is_admin);
-    await Promise.all([loadModels(), loadKbs(), loadChats()]);
+    await Promise.all([loadModels(), loadKbs(), loadChats(), loadTargets()]);
     newChat();
   }
 
@@ -108,6 +108,8 @@
     $("chat-title").textContent = "New chat";
     $("model-select").value = state.defaultModel;
     $("kb-select").value = state.defaultKb || "none";
+    $("exec-toggle").checked = false;
+    syncExecControls();
     renderChatList();
     closeSidebar();
     $("input").focus();
@@ -120,12 +122,25 @@
     $("chat-title").textContent = d.conversation.title;
     if (state.models.some(function (m) { return m.name === d.conversation.model; })) $("model-select").value = d.conversation.model;
     $("kb-select").value = d.conversation.kb;
+    $("exec-toggle").checked = !!d.conversation.exec_on && state.caps.exec;
+    if (d.conversation.target_id && state.targets.some(function (t) { return t.id === d.conversation.target_id; })) {
+      $("target-select").value = String(d.conversation.target_id);
+    }
+    syncExecControls();
     var box = $("messages");
     box.textContent = "";
     $("empty").classList.toggle("hidden", d.messages.length > 0);
+    var actions = d.actions || [];
     d.messages.forEach(function (m) {
-      if (m.role === "user") addUser(m.content);
-      else finishAssistant(addAssistant(), m.content, m.thinking, m.sources, m.model);
+      if (m.role === "user") {
+        addUser(m.content);
+        var mine = actions.filter(function (x) { return x.after_message_id === m.id; });
+        if (mine.length) {
+          var holder = el("div", "msg assistant");
+          mine.forEach(function (x) { holder.appendChild(actionCard(x)); });
+          box.appendChild(holder);
+        }
+      } else finishAssistant(addAssistant(), m.content, m.thinking, m.sources, m.model);
     });
     renderChatList();
     closeSidebar();
@@ -166,8 +181,8 @@
 
   function addAssistant() {
     var row = el("div", "msg assistant");
-    var a = { row: row, status: el("div", "status"), thoughts: null, body: el("div", "body"), extra: el("div", ""), text: "", think: "", sources: [] };
-    row.appendChild(a.status); row.appendChild(a.body); row.appendChild(a.extra);
+    var a = { row: row, status: el("div", "status"), thoughts: null, acts: el("div", ""), body: el("div", "body"), extra: el("div", ""), text: "", think: "", sources: [] };
+    row.appendChild(a.status); row.appendChild(a.acts); row.appendChild(a.body); row.appendChild(a.extra);
     $("messages").appendChild(row);
     return a;
   }
@@ -237,6 +252,14 @@
     else if (ev.type === "sources") a.sources = ev.sources || [];
     else if (ev.type === "notice") notice(ev.text, a.extra);
     else if (ev.type === "error") notice(ev.message, a.extra);
+    else if (ev.type === "action" || ev.type === "confirm") { a.status.textContent = ""; placeAction(a, ev.action); }
+    else if (ev.type === "paused") { a.paused = true; a.status.textContent = ""; }
+  }
+
+  function placeAction(a, action) {
+    var old = document.querySelector('.act[data-id="' + action.id + '"]');
+    var card = actionCard(action);
+    if (old) old.replaceWith(card); else a.acts.appendChild(card);
   }
 
   async function readStream(res, a) {
@@ -258,7 +281,15 @@
     }
   }
 
-  async function streamReply(id, text) {
+  function streamReply(id, text) {
+    var execOn = state.caps.exec && $("exec-toggle").checked && !!$("target-select").value;
+    return streamInto("/api/conversations/" + id + "/messages", {
+      content: text, model: $("model-select").value, kb: $("kb-select").value, think: $("think-toggle").checked,
+      exec: execOn, target_id: execOn ? Number($("target-select").value) : null
+    });
+  }
+
+  async function streamInto(url, payload) {
     if (window.EMBER_DEMO) return;
     var a = addAssistant();
     a.status.textContent = "Starting…";
@@ -266,17 +297,19 @@
     setSending(true);
     var model = $("model-select").value;
     try {
-      var res = await fetch("/api/conversations/" + id + "/messages", {
+      var res = await fetch(url, {
         method: "POST", credentials: "same-origin", signal: state.abort.signal,
         headers: { "Content-Type": "application/json", "X-Ember": "1" },
-        body: JSON.stringify({ content: text, model: model, kb: $("kb-select").value, think: $("think-toggle").checked })
+        body: JSON.stringify(payload)
       });
       if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.detail || ("error " + res.status)); }
       await readStream(res, a);
     } catch (e) {
       if (e.name !== "AbortError") notice(e.message, a.extra); else notice("Stopped.", a.extra);
     } finally {
-      finishAssistant(a, a.text || (a.think ? "" : "_(no reply)_"), a.think, a.sources, model);
+      if (a.paused && !a.text) { a.status.remove(); a.body.remove(); }
+      else if (a.paused) { a.status.remove(); a.body.innerHTML = MD.render(a.text, { highlight: true }); }
+      else finishAssistant(a, a.text || (a.think ? "" : "_(no reply)_"), a.think, a.sources, model);
       state.abort = null;
       setSending(false);
       scrollDown(false);
@@ -327,7 +360,7 @@
   function userRow(u) {
     var tr = el("tr");
     tr.appendChild(el("td", "", u.username + (state.me && u.id === state.me.id ? " (you)" : "")));
-    ["is_admin", "is_active"].forEach(function (field) {
+    ["is_admin", "is_active", "can_exec"].forEach(function (field) {
       var td = el("td"), cb = el("input");
       cb.type = "checkbox"; cb.checked = !!u[field];
       cb.addEventListener("change", function () { patchUser(u, field, cb); });
@@ -398,6 +431,215 @@
     showLogin();
   }
 
+  /* ---------- commands (phase 2) ---------- */
+  function fmtTime(sec) {
+    if (!sec) return "";
+    var d = new Date(sec * 1000);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+      d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  async function loadTargets() {
+    var d;
+    try { d = await api("GET", "/api/targets"); } catch (e) { d = { targets: [], exec: false }; }
+    state.caps = d; state.targets = d.targets || [];
+    var sel = $("target-select");
+    sel.textContent = "";
+    state.targets.forEach(function (t) {
+      var o = el("option", "", t.name + (t.kind === "local" ? " (this computer)" : " · " + t.host));
+      o.value = String(t.id); sel.appendChild(o);
+    });
+    var show = !!d.exec && state.targets.length > 0;
+    $("exec-wrap").classList.toggle("hidden", !show);
+    if (!show) $("exec-toggle").checked = false;
+    syncExecControls();
+  }
+
+  function syncExecControls() {
+    $("target-select").classList.toggle("hidden", !$("exec-toggle").checked);
+  }
+
+  function saveChatExec() {
+    if (!state.current) return;
+    api("PATCH", "/api/conversations/" + state.current, { exec_on: $("exec-toggle").checked, target_id: Number($("target-select").value) || null })
+      .catch(function (e) { console.warn(e); });
+  }
+
+  function statusText(x) {
+    if (x.status === "pending") return "waiting for you";
+    if (x.status === "ran") return "exit " + x.exit_code + (x.mode === "confirmed" ? " · confirmed" : " · auto");
+    return x.status;
+  }
+
+  function actionCard(x) {
+    var card = el("div", "act" + (x.risk === "risky" ? " risky" : ""));
+    card.dataset.id = String(x.id);
+    var head = el("div", "act-head");
+    head.appendChild(el("span", "act-target", x.target));
+    head.appendChild(el("span", "act-cmd", x.command));
+    var ok = x.status === "ran" && x.exit_code === 0;
+    head.appendChild(el("span", "act-status" + (ok ? " ok" : (x.status === "ran" || x.status === "failed" || x.status === "blocked" ? " bad" : "")), statusText(x)));
+    card.appendChild(head);
+    if (x.reason) card.appendChild(el("div", "act-why", x.reason));
+    if (x.risk === "risky" && x.risk_reasons && x.risk_reasons.length) card.appendChild(el("div", "act-risk", "Needs your OK: " + x.risk_reasons.join(", ")));
+    if (x.status === "pending") {
+      var btns = el("div", "act-btns");
+      var run = el("button", "btn primary small", "Run"), cancel = el("button", "btn small", "Cancel");
+      run.type = "button"; cancel.type = "button";
+      run.addEventListener("click", function () { decide(x.id, true); });
+      cancel.addEventListener("click", function () { decide(x.id, false); });
+      btns.appendChild(run); btns.appendChild(cancel); card.appendChild(btns);
+    }
+    if (x.output) {
+      var det = el("details");
+      det.appendChild(el("summary", "", "Output"));
+      det.appendChild(el("pre", "", x.output));
+      if (x.output.length < 400) det.open = true;
+      card.appendChild(det);
+    }
+    return card;
+  }
+
+  async function decide(id, run) {
+    if (state.abort) return;
+    var card = document.querySelector('.act[data-id="' + id + '"] .act-btns');
+    if (card) card.remove();
+    await streamInto("/api/actions/" + id + "/decide", { run: run });
+  }
+
+  function showTab(name) {
+    document.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t.dataset.tab === name); });
+    ["users", "targets", "audit"].forEach(function (n) { $("tab-" + n).classList.toggle("hidden", n !== name); });
+    adminMsg("");
+    var load = name === "users" ? loadUsers : (name === "targets" ? loadExecAdmin : loadAudit);
+    load().catch(function (e) { adminMsg(e.message); });
+  }
+
+  async function loadExecAdmin() {
+    var d = await api("GET", "/api/admin/exec");
+    $("master-toggle").checked = d.exec_enabled;
+    $("master-label").textContent = d.exec_enabled ? "On" : "Off";
+    var credName = {};
+    d.credentials.forEach(function (c) { credName[c.id] = c.name; });
+    var body = $("targets-body");
+    body.textContent = "";
+    d.targets.forEach(function (t) { body.appendChild(targetRow(t, credName)); });
+    renderCreds(d.credentials);
+    syncTargetForm();
+  }
+
+  function targetRow(t, credName) {
+    var tr = el("tr");
+    tr.appendChild(el("td", "", t.name));
+    tr.appendChild(el("td", "", t.kind === "local" ? "This computer" : t.username + "@" + t.host + ":" + t.port + " · " + t.os));
+    tr.appendChild(el("td", "", t.kind === "local" ? "—" : (credName[t.credential_id] || "none")));
+    tr.appendChild(el("td", "fp", t.kind === "local" ? "—" : (t.host_fingerprint || "not seen yet")));
+    var on = el("input"); on.type = "checkbox"; on.checked = !!t.enabled;
+    on.addEventListener("change", function () { api("PATCH", "/api/admin/targets/" + t.id, { enabled: on.checked }).then(loadTargets, function (e) { adminMsg(e.message); }); });
+    var tdOn = el("td"); tdOn.appendChild(on); tr.appendChild(tdOn);
+    var td = el("td");
+    [["Test", function () { testTarget(t); }], ["Reset key", function () { resetFp(t); }], ["Delete", function () { deleteTarget(t); }]].forEach(function (b) {
+      if (b[0] === "Reset key" && t.kind === "local") return;
+      var btn = el("button", "btn small" + (b[0] === "Delete" ? " danger" : ""), b[0]); btn.type = "button";
+      btn.addEventListener("click", b[1]); td.appendChild(btn);
+    });
+    tr.appendChild(td);
+    return tr;
+  }
+
+  function renderCreds(creds) {
+    var box = $("creds-list"), sel = $("nt-cred");
+    box.textContent = ""; sel.textContent = "";
+    var none = el("option", "", "no credential"); none.value = ""; sel.appendChild(none);
+    if (!creds.length) box.appendChild(el("div", "muted small-text", "No credentials yet."));
+    creds.forEach(function (c) {
+      var o = el("option", "", c.name + " (" + c.kind + ")"); o.value = String(c.id); sel.appendChild(o);
+      var row = el("div", "cred");
+      var head = el("div", "act-head");
+      head.appendChild(el("strong", "", c.name));
+      head.appendChild(el("span", "act-target", c.kind === "key" ? "SSH key" : "password (hidden)"));
+      head.appendChild(el("span", "spacer"));
+      if (c.public_key) { var cp = el("button", "btn small", "Copy public key"); cp.type = "button"; cp.addEventListener("click", function () { copyText(c.public_key, cp); }); head.appendChild(cp); }
+      var del = el("button", "btn small danger", "Delete"); del.type = "button";
+      del.addEventListener("click", function () { if (window.confirm("Delete credential " + c.name + "?")) api("DELETE", "/api/admin/credentials/" + c.id).then(loadExecAdmin, function (e) { adminMsg(e.message); }); });
+      head.appendChild(del);
+      row.appendChild(head);
+      if (c.public_key) row.appendChild(el("div", "pub", c.public_key));
+      box.appendChild(row);
+    });
+  }
+
+  function syncTargetForm() {
+    var ssh = $("nt-kind").value === "ssh";
+    document.querySelectorAll("#add-target .ssh-only").forEach(function (n) { n.classList.toggle("hidden", !ssh); });
+  }
+
+  async function setMaster() {
+    var on = $("master-toggle").checked;
+    if (on && !window.confirm("Turn on command running? Users allowed to run commands can let the model run them on enabled targets.")) { $("master-toggle").checked = false; return; }
+    try { await api("PUT", "/api/admin/exec", { exec_enabled: on }); $("master-label").textContent = on ? "On" : "Off"; await loadTargets(); }
+    catch (e) { $("master-toggle").checked = !on; adminMsg(e.message); }
+  }
+
+  async function addTarget(ev) {
+    ev.preventDefault();
+    var body = { name: $("nt-name").value.trim(), kind: $("nt-kind").value, host: $("nt-host").value.trim(),
+      port: Number($("nt-port").value) || 22, username: $("nt-user").value.trim(), os: $("nt-os").value,
+      credential_id: Number($("nt-cred").value) || null };
+    try { await api("POST", "/api/admin/targets", body); $("add-target").reset(); adminMsg("Target added. Use Test to check it."); await loadExecAdmin(); await loadTargets(); }
+    catch (e) { adminMsg(e.message); }
+  }
+
+  async function addCred(ev) {
+    ev.preventDefault();
+    var body = { name: $("nc-name").value.trim(), kind: $("nc-kind").value };
+    if (body.kind === "password") body.password = $("nc-pass").value;
+    try {
+      var c = await api("POST", "/api/admin/credentials", body);
+      $("add-cred").reset(); $("nc-pass").classList.add("hidden");
+      adminMsg(c.kind === "key" ? "Key made. Copy the public key into ~/.ssh/authorized_keys on the target." : "Password saved (encrypted).");
+      await loadExecAdmin();
+    } catch (e) { adminMsg(e.message); }
+  }
+
+  async function testTarget(t) {
+    adminMsg("Testing " + t.name + "…");
+    try { var r = await api("POST", "/api/admin/targets/" + t.id + "/test"); adminMsg((r.ok ? "OK: " : "Failed: ") + r.output); await loadExecAdmin(); }
+    catch (e) { adminMsg(e.message); }
+  }
+
+  async function resetFp(t) {
+    if (!window.confirm("Forget the saved host key for " + t.name + "? Only do this if the computer was reinstalled.")) return;
+    try { await api("PATCH", "/api/admin/targets/" + t.id, { reset_fingerprint: true }); await loadExecAdmin(); } catch (e) { adminMsg(e.message); }
+  }
+
+  async function deleteTarget(t) {
+    if (!window.confirm("Delete target " + t.name + "?")) return;
+    try { await api("DELETE", "/api/admin/targets/" + t.id); await loadExecAdmin(); await loadTargets(); } catch (e) { adminMsg(e.message); }
+  }
+
+  async function loadAudit() {
+    var d = await api("GET", "/api/admin/audit");
+    var body = $("audit-body"), ev = $("events-body");
+    body.textContent = ""; ev.textContent = "";
+    d.actions.forEach(function (a) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "", fmtTime(a.created_at)));
+      tr.appendChild(el("td", "", a.username || "?"));
+      tr.appendChild(el("td", "", a.target_name));
+      var td = el("td"); td.appendChild(el("code", "", a.command)); tr.appendChild(td);
+      tr.appendChild(el("td", "", a.risk === "risky" ? "risky" : "safe"));
+      tr.appendChild(el("td", "", a.status === "ran" ? "exit " + a.exit_code + " · " + (a.mode === "confirmed" ? "confirmed" : "auto") : a.status));
+      body.appendChild(tr);
+    });
+    if (!d.actions.length) { var e0 = el("tr"); e0.appendChild(el("td", "muted", "No commands yet.")); body.appendChild(e0); }
+    d.events.forEach(function (e) {
+      var tr = el("tr");
+      [fmtTime(e.at), e.username || "—", e.event, e.detail].forEach(function (v) { tr.appendChild(el("td", "", v)); });
+      ev.appendChild(tr);
+    });
+  }
+
   /* ---------- wiring ---------- */
   function openSidebar() { $("sidebar").classList.add("open"); $("scrim").classList.remove("hidden"); }
   function closeSidebar() { $("sidebar").classList.remove("open"); $("scrim").classList.add("hidden"); }
@@ -433,7 +675,15 @@
     $("messages").addEventListener("click", onCiteClick);
     $("menu-btn").addEventListener("click", openSidebar);
     $("scrim").addEventListener("click", closeSidebar);
-    $("admin-btn").addEventListener("click", function () { adminMsg(""); $("admin-dlg").showModal(); loadUsers().catch(function (e) { adminMsg(e.message); }); });
+    $("admin-btn").addEventListener("click", function () { adminMsg(""); $("admin-dlg").showModal(); showTab("users"); });
+    document.querySelectorAll(".tab").forEach(function (t) { t.addEventListener("click", function () { showTab(t.dataset.tab); }); });
+    $("master-toggle").addEventListener("change", setMaster);
+    $("add-target").addEventListener("submit", addTarget);
+    $("add-cred").addEventListener("submit", addCred);
+    $("nt-kind").addEventListener("change", syncTargetForm);
+    $("nc-kind").addEventListener("change", function () { $("nc-pass").classList.toggle("hidden", $("nc-kind").value !== "password"); });
+    $("exec-toggle").addEventListener("change", function () { syncExecControls(); saveChatExec(); });
+    $("target-select").addEventListener("change", saveChatExec);
     $("pw-btn").addEventListener("click", function () { $("pw-msg").textContent = ""; $("pw-dlg").showModal(); });
     $("add-user").addEventListener("submit", addUserSubmit);
     $("pw-form").addEventListener("submit", changePassword);
@@ -462,7 +712,7 @@
     if (!d) return;
     if (d.view === "login") { showLogin(); return; }
     if (d.open) await openChat(d.open);
-    if (d.view === "admin") $("admin-btn").click();
+    if (d.view === "admin" || d.view === "targets" || d.view === "audit") { $("admin-btn").click(); showTab(d.view === "admin" ? "users" : d.view); }
   }
 
   boot().then(demoStart, function (e) { console.warn(e); });

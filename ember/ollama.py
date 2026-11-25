@@ -44,14 +44,22 @@ def normalize_model(name: str, installed: set[str]) -> str | None:
     return None
 
 
-def supports_thinking(base_url: str, model: str) -> bool:
+def model_capabilities(base_url: str, model: str) -> set[str]:
     data = call_json(f"{base_url}/api/show", {"model": model}, config.OLLAMA_CONNECT_TIMEOUT_SEC)
     caps = data.get("capabilities")
-    return isinstance(caps, list) and "thinking" in caps
+    if not isinstance(caps, list):
+        return set()
+    return {str(c) for c in caps[:20]}
 
 
-def stream_chat(base_url: str, model: str, messages: list[dict[str, str]], think: bool) -> Iterator[tuple[str, str]]:
-    """Yield ('content'|'thinking', text) pieces until Ollama says done."""
+def supports_thinking(base_url: str, model: str) -> bool:
+    return "thinking" in model_capabilities(base_url, model)
+
+
+def stream_chat(
+    base_url: str, model: str, messages: list[dict[str, Any]], think: bool, tools: list[dict[str, Any]] | None = None
+) -> Iterator[tuple[str, Any]]:
+    """Yield ('content'|'thinking', text) or ('tool_calls', list) until Ollama says done."""
     payload: dict[str, Any] = {
         "model": model,
         "messages": messages,
@@ -59,6 +67,8 @@ def stream_chat(base_url: str, model: str, messages: list[dict[str, str]], think
         "think": think,
         "keep_alive": "10m",
     }
+    if tools:
+        payload["tools"] = tools
     stream = stream_ndjson(
         f"{base_url}/api/chat", payload, config.OLLAMA_STREAM_IDLE_TIMEOUT_SEC, config.OLLAMA_MAX_STREAM_LINES
     )
@@ -73,5 +83,8 @@ def stream_chat(base_url: str, model: str, messages: list[dict[str, str]], think
             content = msg.get("content")
             if isinstance(content, str) and content:
                 yield ("content", content)
+            calls = msg.get("tool_calls")
+            if isinstance(calls, list) and calls:
+                yield ("tool_calls", calls[:4])
         if item.get("done"):
             return

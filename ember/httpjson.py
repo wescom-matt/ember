@@ -44,7 +44,7 @@ def _http_error(exc: urllib.error.HTTPError) -> RuntimeError:
 def call_json(url: str, payload: dict[str, Any] | None, timeout_sec: int) -> dict[str, Any]:
     request = _request(url, payload)
     try:
-        with urllib.request.urlopen(request, timeout=timeout_sec) as response:  # noqa: S310  # nosec B310
+        with urllib.request.urlopen(request, timeout=timeout_sec) as response:  # noqa: S310 # nosec B310
             raw = response.read(MAX_HTTP_BYTES + 1)
     except urllib.error.HTTPError as exc:
         raise _http_error(exc) from exc
@@ -67,7 +67,7 @@ def stream_ndjson(url: str, payload: dict[str, Any], timeout_sec: int, max_lines
     """Yield JSON objects from a newline-delimited stream, with a line cap."""
     request = _request(url, payload)
     try:
-        response = urllib.request.urlopen(request, timeout=timeout_sec)  # noqa: S310  # nosec B310
+        response = urllib.request.urlopen(request, timeout=timeout_sec)  # noqa: S310 # nosec B310
     except urllib.error.HTTPError as exc:
         raise _http_error(exc) from exc
     except urllib.error.URLError as exc:

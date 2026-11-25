@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -61,6 +61,56 @@ CREATE TABLE IF NOT EXISTS audit (
 """
 
 MAX_AUDIT_ROWS = 20_000
+MAX_ACTION_ROWS = 20_000
+
+# Phase 2: command targets, credentials, actions, settings.
+SCHEMA_V2 = """
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS credentials (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    kind TEXT NOT NULL CHECK (kind IN ('key', 'password')),
+    public_key TEXT NOT NULL DEFAULT '',
+    secret_enc TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS targets (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    kind TEXT NOT NULL CHECK (kind IN ('local', 'ssh')),
+    host TEXT NOT NULL DEFAULT '',
+    port INTEGER NOT NULL DEFAULT 22,
+    username TEXT NOT NULL DEFAULT '',
+    os TEXT NOT NULL DEFAULT 'linux' CHECK (os IN ('linux', 'windows')),
+    credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
+    host_fingerprint TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS actions (
+    id INTEGER PRIMARY KEY,
+    conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
+    after_message_id INTEGER NOT NULL DEFAULT 0,
+    user_id INTEGER NOT NULL,
+    target_id INTEGER,
+    target_name TEXT NOT NULL,
+    command TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    risk TEXT NOT NULL,
+    risk_reasons TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL CHECK (status IN ('pending', 'ran', 'cancelled', 'blocked', 'expired', 'failed')),
+    mode TEXT NOT NULL DEFAULT 'auto' CHECK (mode IN ('auto', 'confirmed', 'none')),
+    exit_code INTEGER,
+    output TEXT NOT NULL DEFAULT '',
+    context TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    finished_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_actions_conv ON actions(conversation_id, id);
+"""
 
 
 def now() -> int:
@@ -92,14 +142,47 @@ def init_db(path: Path) -> None:
     try:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(SCHEMA)
+        conn.executescript(SCHEMA_V2)
+        _add_column(conn, "users", "can_exec", "INTEGER NOT NULL DEFAULT 0")
+        _add_column(conn, "conversations", "exec_on", "INTEGER NOT NULL DEFAULT 0")
+        _add_column(conn, "conversations", "target_id", "INTEGER")
         conn.execute(
             "INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
             (str(SCHEMA_VERSION),),
         )
+        conn.execute("UPDATE meta SET value = ? WHERE key = 'schema_version'", (str(SCHEMA_VERSION),))
         conn.commit()
     finally:
         conn.close()
     path.chmod(0o600)
+
+
+_ALLOWED_COLUMNS = {
+    ("users", "can_exec"),
+    ("conversations", "exec_on"),
+    ("conversations", "target_id"),
+}
+
+
+def _add_column(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
+    """Idempotent migration. Names come from the fixed allowlist above, never from input."""
+    if (table, column) not in _ALLOWED_COLUMNS:
+        raise ValueError("column not allowed")
+    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}  # noqa: S608 # nosec B608
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")  # nosec B608
+
+
+def get_setting(conn: sqlite3.Connection, key: str, default: str) -> str:
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return str(row["value"]) if row is not None else default
+
+
+def set_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    conn.execute(
+        "INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
 
 
 def audit(conn: sqlite3.Connection, user_id: int | None, event: str, detail: str = "") -> None:

@@ -6,9 +6,9 @@ import json
 import logging
 import sqlite3
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -17,11 +17,13 @@ from ember import __version__, auth, config, ollama, tools
 from ember.chat import Turn, run_turn
 from ember.config import Settings
 from ember.db import audit, connect, init_db, now
+from ember.deps import COOKIE, Admin, User, _check_kb, _check_model, _db, _own_conversation
 from ember.kb import KnowledgeBase, build_registry, describe
+from ember.routes_exec import list_actions, register_exec_routes, start_exec_turn
+from ember.vault import Vault
 
 LOG = logging.getLogger("ember")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-COOKIE = "ember_session"
 CSRF_HEADER = "x-ember"
 CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
@@ -48,6 +50,8 @@ class ConversationPatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=config.MAX_TITLE)
     model: str | None = Field(default=None, max_length=100)
     kb: str | None = Field(default=None, max_length=32)
+    exec_on: bool | None = None
+    target_id: int | None = None
 
 
 class MessageIn(BaseModel):
@@ -55,6 +59,8 @@ class MessageIn(BaseModel):
     model: str = Field(min_length=1, max_length=100)
     kb: str = Field(default="none", max_length=32)
     think: bool = False
+    exec: bool = False
+    target_id: int | None = None
 
 
 class UserIn(BaseModel):
@@ -66,63 +72,8 @@ class UserIn(BaseModel):
 class UserPatch(BaseModel):
     is_admin: bool | None = None
     is_active: bool | None = None
+    can_exec: bool | None = None
     password: str | None = Field(default=None, min_length=config.MIN_PASSWORD, max_length=config.MAX_PASSWORD)
-
-
-def _db(request: Request) -> Path:
-    path: Path = request.app.state.settings.db_path
-    return path
-
-
-def current_user(request: Request) -> dict[str, Any]:
-    with connect(_db(request)) as conn:
-        row = auth.session_user(conn, request.cookies.get(COOKIE))
-    if row is None:
-        raise HTTPException(status_code=401, detail="sign in required")
-    return {"id": int(row["id"]), "username": row["username"], "is_admin": bool(row["is_admin"])}
-
-
-def admin_user(user: Annotated[dict[str, Any], Depends(current_user)]) -> dict[str, Any]:
-    if not user["is_admin"]:
-        raise HTTPException(status_code=403, detail="admin only")
-    return user
-
-
-User = Annotated[dict[str, Any], Depends(current_user)]
-Admin = Annotated[dict[str, Any], Depends(admin_user)]
-
-
-def _own_conversation(conn: sqlite3.Connection, conv_id: int, user_id: int) -> sqlite3.Row:
-    row = conn.execute(
-        "SELECT id, title, model, kb, created_at, updated_at FROM conversations WHERE id = ? AND user_id = ?",
-        (conv_id, user_id),
-    ).fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="chat not found")
-    conv: sqlite3.Row = row
-    return conv
-
-
-def _check_kb(request: Request, kb_id: str) -> KnowledgeBase | None:
-    if kb_id == "none":
-        return None
-    registry: dict[str, KnowledgeBase] = request.app.state.kbs
-    kb = registry.get(kb_id)
-    if kb is None:
-        raise HTTPException(status_code=400, detail="unknown knowledge base")
-    return kb
-
-
-def _check_model(request: Request, name: str) -> str:
-    try:
-        installed = ollama.model_names(request.app.state.settings.ollama_url)
-    except RuntimeError as exc:
-        LOG.warning("ollama model list failed: %s", exc)
-        raise HTTPException(status_code=503, detail="Ollama is not responding") from exc
-    model = ollama.normalize_model(name, installed)
-    if model is None:
-        raise HTTPException(status_code=400, detail="model is not installed")
-    return model
 
 
 def _like(term: str) -> str:
@@ -229,12 +180,13 @@ def register_chat_routes(app: FastAPI) -> None:
                 "WHERE conversation_id = ? ORDER BY id LIMIT ?",
                 (conv_id, config.MAX_MESSAGES_PER_CONVERSATION),
             ).fetchall()
+            actions = list_actions(conn, conv_id)
         messages = []
         for r in rows:
             item = dict(r)
             item["sources"] = json.loads(r["sources"] or "[]")
             messages.append(item)
-        return {"conversation": dict(conv), "messages": messages}
+        return {"conversation": dict(conv), "messages": messages, "actions": actions}
 
     @app.patch("/api/conversations/{conv_id}")
     def patch_conversation(conv_id: int, body: ConversationPatch, user: User, request: Request) -> dict[str, Any]:
@@ -243,9 +195,12 @@ def register_chat_routes(app: FastAPI) -> None:
         with connect(_db(request)) as conn:
             conv = _own_conversation(conn, conv_id, user["id"])
             title = body.title.strip() if body.title else conv["title"]
+            exec_on = conv["exec_on"] if body.exec_on is None else int(body.exec_on)
+            target_id = conv["target_id"] if body.target_id is None else body.target_id
             conn.execute(
-                "UPDATE conversations SET title = ?, model = ?, kb = ? WHERE id = ?",
-                (title or conv["title"], body.model or conv["model"], body.kb or conv["kb"], conv_id),
+                "UPDATE conversations SET title = ?, model = ?, kb = ?, exec_on = ?, target_id = ? WHERE id = ?",
+                (title or conv["title"], body.model or conv["model"], body.kb or conv["kb"],
+                 exec_on, target_id, conv_id),
             )
         return {"ok": True}
 
@@ -268,19 +223,28 @@ def register_chat_routes(app: FastAPI) -> None:
             if count >= config.MAX_MESSAGES_PER_CONVERSATION - 1:
                 raise HTTPException(status_code=400, detail="this chat is full; start a new one")
             t = now()
-            conn.execute(
+            cur = conn.execute(
                 "INSERT INTO messages(conversation_id, role, content, model, created_at) VALUES (?, 'user', ?, ?, ?)",
                 (conv_id, body.content, model, t),
+            )
+            user_msg_id = int(cur.lastrowid or 0)
+            conn.execute(
+                "UPDATE actions SET status = 'expired', context = '' WHERE conversation_id = ? AND status = 'pending'",
+                (conv_id,),
             )
             title = conv["title"]
             if title == "New chat":
                 title = " ".join(body.content.split())[:60] or "New chat"
             conn.execute(
-                "UPDATE conversations SET title = ?, model = ?, kb = ?, updated_at = ? WHERE id = ?",
-                (title, model, body.kb, t, conv_id),
+                "UPDATE conversations SET title = ?, model = ?, kb = ?, exec_on = ?, target_id = ?, updated_at = ? "
+                "WHERE id = ?",
+                (title, model, body.kb, int(body.exec), body.target_id, t, conv_id),
             )
         turn = Turn(conversation_id=conv_id, model=model, kb_id=body.kb, think=think, question=body.content)
-        stream = run_turn(settings.db_path, settings.ollama_url, kb, turn)
+        if body.exec:
+            stream = start_exec_turn(request, user["id"], turn, kb, body.target_id, user_msg_id)
+        else:
+            stream = run_turn(settings.db_path, settings.ollama_url, kb, turn)
         return StreamingResponse(stream, media_type="application/x-ndjson", headers={"Cache-Control": "no-store"})
 
 
@@ -297,7 +261,7 @@ def register_admin_routes(app: FastAPI) -> None:
     def list_users(admin: Admin, request: Request) -> dict[str, Any]:
         with connect(_db(request)) as conn:
             rows = conn.execute(
-                "SELECT id, username, is_admin, is_active, created_at FROM users ORDER BY username LIMIT ?",
+                "SELECT id, username, is_admin, is_active, can_exec, created_at FROM users ORDER BY username LIMIT ?",
                 (config.MAX_USERS,),
             ).fetchall()
         return {"users": [dict(r) for r in rows]}
@@ -341,6 +305,8 @@ def _apply_user_patch(conn: sqlite3.Connection, user_id: int, body: UserPatch) -
         conn.execute("UPDATE users SET is_active = ? WHERE id = ?", (int(body.is_active), user_id))
         if not body.is_active:
             auth.end_all_sessions(conn, user_id)
+    if body.can_exec is not None:
+        conn.execute("UPDATE users SET can_exec = ? WHERE id = ?", (int(body.can_exec), user_id))
     if body.password is not None:
         try:
             auth.set_password(conn, user_id, body.password)
@@ -353,6 +319,7 @@ def create_app(settings: Settings, kbs: dict[str, KnowledgeBase] | None = None) 
     app = FastAPI(title="Ember", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.kbs = kbs if kbs is not None else build_registry(settings.ollama_url, settings.qdrant_url)
+    app.state.vault = Vault(settings.secret_key_file)
 
     @app.middleware("http")
     async def guard(request: Request, call_next: Any) -> Response:
@@ -373,12 +340,14 @@ def create_app(settings: Settings, kbs: dict[str, KnowledgeBase] | None = None) 
         return {"version": __version__}
 
     @app.get("/api/capabilities")
-    def capabilities(user: User) -> dict[str, bool]:
-        return tools.capabilities()
+    def capabilities(user: User, request: Request) -> dict[str, bool]:
+        with connect(_db(request)) as conn:
+            return tools.capabilities(conn, user["id"])
 
     register_auth_routes(app)
     register_chat_routes(app)
     register_admin_routes(app)
+    register_exec_routes(app)
     app.mount("/static", StaticFiles(directory=STATIC_DIR, html=False), name="static")
 
     @app.get("/")
