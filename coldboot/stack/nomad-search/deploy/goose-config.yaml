@@ -1,0 +1,32 @@
+# Nomad default: local Ollama, Qwen 3.5 9B, ask before running tools
+GOOSE_PROVIDER: ollama
+OLLAMA_HOST: http://127.0.0.1:11434
+GOOSE_MODEL: qwen3.5-9b-4k
+GOOSE_MODE: approve
+GOOSE_TELEMETRY_ENABLED: false
+GOOSE_INPUT_LIMIT: 8192
+extensions:
+  developer:
+    bundled: true
+    enabled: true
+    type: builtin
+    name: developer
+    display_name: Developer Tools
+    timeout: 300
+  nomad-search:
+    enabled: true
+    type: stdio
+    name: nomad-search
+    display_name: Nomad Knowledge Base
+    description: Search the local Nomad knowledge base for medicine, first aid, repair, DIY, ham radio, outdoors, and other offline references. Use search_knowledge for factual questions. Read-only.
+    cmd: /home/matt/.local/bin/nomad-search-mcp
+    args: []
+    timeout: 90
+    envs: {}
+    env_keys: []
+# Lead/worker (use goose-lw). Default worker is qwen3.5-9b-4k because Llama 3.2
+# often printed commands as text instead of running them. Approval stays on.
+GOOSE_SUBAGENT_PROVIDER: ollama
+GOOSE_SUBAGENT_MODEL: qwen3.5-9b-4k
+# NOTE: Goose only runs subagents in auto mode; with GOOSE_MODE approve they are off,
+# so use the `goose-lw` wrapper for lead->worker hand-off with approval kept on.

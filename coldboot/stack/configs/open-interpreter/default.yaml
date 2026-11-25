@@ -1,0 +1,19 @@
+### Nomad default: local Ollama, Qwen 3.5 9B, ask before running code
+llm:
+  model: "ollama/qwen3.5:9b"
+  api_base: "http://127.0.0.1:11434"
+  api_key: "ollama"
+  temperature: 0
+  context_window: 8192
+  max_tokens: 2048
+  supports_functions: false
+
+computer:
+  import_computer_api: false
+  offline: true
+
+auto_run: false
+offline: true
+safe_mode: "off"
+
+custom_instructions: "Stay offline. For medical, first aid, repair, DIY, ham radio, outdoors, or other factual questions, first run: nomad-search \"<the question>\" and use only its citations. Do not invent sources."

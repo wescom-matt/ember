@@ -7,6 +7,8 @@ requires-python = ">=3.12"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+# coldboot/stack holds vendored copies of the live P1 tools; kept byte-identical.
+extend-exclude = ["coldboot/stack"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "B", "S", "UP", "SIM", "I"]
@@ -26,7 +28,7 @@ ignore_missing_imports = true
 exclude = ["tests/"]
 
 [tool.bandit]
-exclude_dirs = ["tests", ".venv"]
+exclude_dirs = ["tests", ".venv", "coldboot/stack"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

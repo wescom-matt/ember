@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Ember phase-1 installer (no sudo). Safe to re-run.
-# Phase 3 (ColdBoot) will wrap this with Ollama models, Goose and nomad-search.
+# Ember installer (no sudo). Safe to re-run. ColdBoot (./coldboot.sh) calls this.
+# EMBER_WHEELS=/dir installs from pre-downloaded wheels with no internet.
 set -euo pipefail
 
 EMBER_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export EMBER_HOME
 CONF_DIR="$HOME/.config/ember"
 TLS_DIR="$CONF_DIR/tls"
 UNIT_DIR="$HOME/.config/systemd/user"
@@ -23,7 +24,9 @@ make_venv() {
   uv="$(find_uv)"
   say "Python venv (3.12) and pinned packages"
   "$uv" venv -q --allow-existing --python 3.12 "$EMBER_HOME/.venv"
-  "$uv" pip install -q --python "$EMBER_HOME/.venv/bin/python" --require-hashes -r "$EMBER_HOME/requirements.txt"
+  local offline=()
+  if [[ -n "${EMBER_WHEELS:-}" ]]; then offline=(--offline --no-index --find-links "$EMBER_WHEELS"); fi
+  "$uv" pip install -q --python "$EMBER_HOME/.venv/bin/python" "${offline[@]}" --require-hashes -r "$EMBER_HOME/requirements.txt"
   if [[ "${EMBER_DEV:-0}" == "1" ]]; then
     "$uv" pip install -q --python "$EMBER_HOME/.venv/bin/python" --require-hashes -r "$EMBER_HOME/requirements-dev.txt"
   fi
@@ -42,7 +45,8 @@ make_cert() {
   say "Self-signed TLS certificate (10 years) in $TLS_DIR"
   local ip
   ip="$(hostname -I | awk '{print $1}')"
-  local san="DNS:localhost,DNS:$(hostname),IP:127.0.0.1"
+  local san
+  san="DNS:localhost,DNS:$(hostname),IP:127.0.0.1"
   if [[ -n "$ip" ]]; then san="$san,IP:$ip"; fi
   ( umask 077
     openssl req -x509 -newkey rsa:3072 -sha256 -days 3650 -nodes \
@@ -80,7 +84,9 @@ main() {
   check_linger
   sleep 2
   systemctl --user --no-pager --lines=0 status ember.service | head -n 3 || true
-  say "Done. Create your admin: ember create-admin <name>   Then open: $(EMBER_HOME="$EMBER_HOME" "$EMBER_HOME/bin/ember" url)"
+  local url
+  url="$("$EMBER_HOME/bin/ember" url)"
+  say "Done. Create your admin: ember create-admin <name>   Then open: $url"
 }
 
 main "$@"

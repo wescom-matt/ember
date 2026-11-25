@@ -1,0 +1,4 @@
+#!/bin/bash
+# Launch Open Interpreter with the Nomad (local Ollama) profile. Approval stays on.
+export PATH="$HOME/.local/bin:$PATH"
+exec interpreter --profile nomad --offline --disable_telemetry "$@"

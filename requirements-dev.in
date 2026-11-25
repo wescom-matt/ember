@@ -5,3 +5,4 @@ bandit
 ruff
 mypy
 pip-audit
+shellcheck-py

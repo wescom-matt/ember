@@ -1,0 +1,10 @@
+# name  sha256  cache-path  download-url
+# Checksums taken from the files in ~/agent-stack-backup on the P1 (2026-11-25).
+# ColdBoot refuses any file whose sha256 does not match.
+ollama 993e83d08c3d13d17c55009a3e2664c8a25445e644aec3a68bef5abb6abce67d ollama/ollama-linux-amd64.tar.zst https://github.com/ollama/ollama/releases/download/v0.40.14/ollama-linux-amd64.tar.zst
+goose 7966fdf90299c3418c083e594d43c5e2fbb71724d417b72017048cb84f719556 goose/goose -
+goose-tar e4dda9ce4264b08842f836ed13e818a836156a8778d09b6c113264c32323a171 goose/goose-x86_64-unknown-linux-gnu.tar.bz2 https://github.com/block/goose/releases/download/v1.59.1/goose-x86_64-unknown-linux-gnu.tar.bz2
+goose-deb 7b96b8bbece0ae71aeb05a2bc2e8cb64f2a1c9cf9956fe06c4e5610bb9541c10 goose/goose_1.59.1_amd64.deb https://github.com/block/goose/releases/download/v1.59.1/goose_1.59.1_amd64.deb
+uv 4a7607589912d9c20e86b860b032f7c7f2913c9a3e76f46aef136885387452b8 python/uv -
+uvx c246ee76ad8d606c9347c2774698654235f2016becd87de559662a33f7d13726 python/uvx -
+cpython 1e1efa4c133c2ee7b1c589e0ef632e190b23c812209771c637eff482064ca2ab python/cpython-3.12.16-linux-x86_64-gnu.tar.zst -

@@ -89,7 +89,7 @@ class Settings:
     host: str
     port: int
     secure_cookies: bool
-    secret_key_file: Path = Path("~/.config/ember/secret.key")
+    secret_key_file: Path
 
     @property
     def db_path(self) -> Path:

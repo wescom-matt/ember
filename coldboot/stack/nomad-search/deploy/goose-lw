@@ -1,0 +1,43 @@
+#!/bin/bash
+# goose-lw: lead/worker Goose for the P1.
+#   Lead/planner = qwen3.5-9b-4k  (writes a step-by-step plan; has NO tools, cannot run anything)
+#   Worker       = qwen3.5-9b-4k  (carries out the plan; asks before EVERY command/file change)
+#   Llama 3.2 is not the default worker: it often printed a command as text instead of
+#   calling the tool to run it. Override with WORKER=llama3.2-4k if you want to try it.
+# Goose 1.59.1 removed the old GOOSE_LEAD_MODEL switch, and its built-in subagents only run in
+# auto mode, so this wrapper does the hand-off itself and keeps approve-before-run ON.
+# The lead runs in Goose "chat" mode (tools switched off), so it can only write the plan.
+# Usage:  goose-lw "what you want done"
+#         LEAD=llama3.1:8b WORKER=llama3.2-4k goose-lw "..."   (override models)
+set -euo pipefail
+export PATH="$HOME/.local/bin:$PATH"
+LEAD="${LEAD:-qwen3.5-9b-4k}"
+WORKER="${WORKER:-qwen3.5-9b-4k}"
+TASK="${*:-}"
+if [ -z "$TASK" ]; then read -r -p "Task for the agent: " TASK; fi
+[ -n "$TASK" ] || { echo "No task given."; exit 1; }
+
+PLAN_FILE="$(mktemp /tmp/goose-lw-plan.XXXXXX)"
+echo ">>> Lead ($LEAD) is planning. It has no tools and runs nothing..."
+GOOSE_PROVIDER=ollama GOOSE_MODEL="$LEAD" GOOSE_MODE=chat \
+goose run --no-profile --no-session -q \
+  --system "You are the LEAD PLANNER. Do not run anything. Reply ONLY with a short numbered plan (at most 8 steps) a smaller model can follow. Each step: one concrete action, with the exact shell command where one is needed. For medical, repair, DIY, ham radio, or other factual questions, a step must use the search_knowledge tool or the command: nomad-search \"<question>\". Linux (Ubuntu), user matt, no sudo. Never touch Ollama, Docker, Nomad, Qdrant or /opt/project-nomad. Finish with a line 'DONE WHEN: <how to check success>'." \
+  -t "$TASK" | tee "$PLAN_FILE"
+echo
+if [ "${GOOSE_LW_PLAN_ONLY:-0}" = "1" ]; then echo "(plan only; saved in $PLAN_FILE)"; exit 0; fi
+read -r -p ">>> Hand this plan to the worker ($WORKER)? You'll still approve every command. [y/N] " ok
+case "$ok" in y|Y|yes) ;; *) echo "Stopped. Plan saved in $PLAN_FILE"; exit 0;; esac
+
+echo ">>> Worker ($WORKER) starting. Approval is ON. If it gets stuck, type: /model  and pick qwen3.5-9b-4k"
+GOOSE_PROVIDER=ollama GOOSE_MODEL="$WORKER" GOOSE_MODE=approve \
+exec goose run -s -n "goose-lw-$(date +%Y%m%d-%H%M%S)" \
+  -t "You are the WORKER. Carry out this plan one step at a time, using your tools.
+
+TOOL USE IS REQUIRED. When a step needs a command or a knowledge lookup, you MUST call a tool to do it. Never only print, describe, or markdown-wrap a command instead of executing it. If you need a shell command, call the developer/shell tool. If you need facts from the Nomad library, call the search_knowledge tool (or run nomad-search). Do not invent sources.
+
+Do not skip ahead, do not add extra actions, and stop and say so if a step fails.
+
+TASK: $TASK
+
+PLAN:
+$(cat "$PLAN_FILE")"

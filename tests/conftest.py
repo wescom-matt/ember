@@ -49,6 +49,7 @@ def settings(tmp_path: Path) -> Settings:
         host="127.0.0.1",
         port=8600,
         secure_cookies=False,
+        secret_key_file=tmp_path / "secret.key",
     )
 
 

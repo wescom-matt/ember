@@ -1,0 +1,3 @@
+# nomad-search uses the Python standard library only (urllib, json, argparse).
+# No third-party packages are required or downloaded.
+# Python 3.12 on the P1 is provided by the existing uv-managed interpreter.
