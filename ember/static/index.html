@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ember</title>
+<link rel="stylesheet" href="/static/vendor/hljs-github-dark.min.css">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<svg width="0" height="0" class="hidden" aria-hidden="true">
+  <symbol id="i-ember" viewBox="0 0 24 24"><path d="M12 2c1 3.5-1.2 5.2-2.6 7C8 10.9 7 12.6 7 14.8 7 18.2 9.2 21 12 21s5-2.8 5-6.2c0-2.4-1.1-4.2-2.2-5.3.1 1.6-.5 2.9-1.6 3.4.4-3.6-.5-7.6-1.2-9.9z" fill="currentColor"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-4.5-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
+<main id="login-view" class="login hidden">
+  <form id="login-form" class="login-card" autocomplete="on">
+    <div class="brand big"><svg class="logo"><use href="#i-ember"/></svg><span>Ember</span></div>
+    <p class="muted">Offline assistant</p>
+    <label>Username<input id="login-user" name="username" autocomplete="username" maxlength="32" required></label>
+    <label>Password<input id="login-pass" name="password" type="password" autocomplete="current-password" maxlength="256" required></label>
+    <button type="submit" class="btn primary wide">Sign in</button>
+    <p id="login-error" class="error" role="alert"></p>
+  </form>
+</main>
+
+<div id="app-view" class="shell hidden">
+  <aside id="sidebar" class="sidebar">
+    <div class="side-top">
+      <div class="brand"><svg class="logo"><use href="#i-ember"/></svg><span>Ember</span></div>
+      <button id="new-chat" class="btn ghost new-chat" title="New chat"><svg class="ico"><use href="#i-plus"/></svg><span>New chat</span></button>
+      <div class="search"><svg class="ico"><use href="#i-search"/></svg><input id="chat-search" type="search" placeholder="Search chats" maxlength="100"></div>
+    </div>
+    <nav id="chat-list" class="chat-list" aria-label="Chats"></nav>
+    <div class="side-bottom">
+      <button id="admin-btn" class="btn ghost wide left hidden">Users &amp; admin</button>
+      <button id="pw-btn" class="btn ghost wide left">Change password</button>
+      <div class="me-row"><span id="me-name" class="me-name"></span><button id="logout-btn" class="btn ghost small">Sign out</button></div>
+    </div>
+  </aside>
+  <div id="scrim" class="scrim hidden"></div>
+
+  <section class="main">
+    <header class="topbar">
+      <button id="menu-btn" class="btn ghost icon only-mobile" title="Chats"><svg class="ico"><use href="#i-menu"/></svg></button>
+      <h1 id="chat-title" class="chat-title">New chat</h1>
+    </header>
+    <div id="scroller" class="scroller">
+      <div id="empty" class="empty">
+        <svg class="logo huge"><use href="#i-ember"/></svg>
+        <h2>What do you need?</h2>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div id="messages" class="messages"></div>
+    </div>
+    <form id="composer" class="composer">
+      <div class="composer-box">
+        <textarea id="input" rows="1" placeholder="Ask Ember anything…" maxlength="16000"></textarea>
+        <div class="composer-row">
+          <select id="model-select" title="Model"></select>
+          <select id="kb-select" title="Knowledge base"></select>
+          <label class="toggle" title="Let thinking models reason first (slower)"><input id="think-toggle" type="checkbox"><span>Think</span></label>
+          <span class="spacer"></span>
+          <button id="send-btn" type="submit" class="send" title="Send (Enter)"><svg class="ico"><use href="#i-up"/></svg></button>
+        </div>
+      </div>
+      <p class="hint">Runs fully offline on this computer. Answers can be wrong; check anything safety-critical.</p>
+    </form>
+  </section>
+</div>
+
+<dialog id="admin-dlg" class="dlg">
+  <div class="dlg-head"><h3>Users</h3><button class="btn ghost small" data-close>Close</button></div>
+  <table class="users"><thead><tr><th>User</th><th>Admin</th><th>Active</th><th></th></tr></thead><tbody id="users-body"></tbody></table>
+  <form id="add-user" class="add-user">
+    <h4>Add a user</h4>
+    <input id="nu-name" placeholder="username" maxlength="32" autocomplete="off" required>
+    <input id="nu-pass" type="password" placeholder="password (10+ chars)" minlength="10" maxlength="256" autocomplete="new-password" required>
+    <label class="toggle"><input id="nu-admin" type="checkbox"><span>Admin</span></label>
+    <button class="btn primary" type="submit">Add</button>
+  </form>
+  <p id="admin-msg" class="muted small-text" role="status"></p>
+</dialog>
+
+<dialog id="pw-dlg" class="dlg narrow">
+  <form id="pw-form">
+    <div class="dlg-head"><h3>Change password</h3><button type="button" class="btn ghost small" data-close>Close</button></div>
+    <label>Current password<input id="pw-cur" type="password" autocomplete="current-password" maxlength="256" required></label>
+    <label>New password (10+ characters)<input id="pw-new" type="password" autocomplete="new-password" minlength="10" maxlength="256" required></label>
+    <button class="btn primary wide" type="submit">Change</button>
+    <p id="pw-msg" class="muted small-text" role="status"></p>
+  </form>
+</dialog>
+
+<div id="version" class="version"></div>
+<script src="/static/vendor/highlight.min.js"></script>
+<script src="/static/markdown.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

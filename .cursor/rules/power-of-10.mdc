@@ -1,0 +1,22 @@
+---
+description: NASA/JPL Power of 10 safety rules (Holzmann), plus light MISRA/JSF discipline
+alwaysApply: true
+---
+
+# Power of 10
+
+Default coding rules for Python, JavaScript/TypeScript, C, C++, C#, and shell. Adapted from NASA/JPL's Power of 10 (Gerard Holzmann) with a little MISRA/JSF-style discipline.
+
+1. Keep control flow simple. No goto, setjmp/longjmp, or recursion unless the depth is clearly bounded and documented.
+2. Every loop has a fixed upper bound. Every network, subprocess, database, or I/O wait has a timeout. A supervised service loop may run until a stop flag, but each iteration must sleep or wait with a timeout.
+3. Do not let memory, caches, logs, queues, or collections grow without a cap. Prefer fixed buffers in long-running services.
+4. Keep functions small, about 60 lines maximum. Split rather than nest.
+5. Assert invariants and validate inputs at every trust boundary (API, CLI, files, network, user input). Fail closed.
+6. Declare data in the smallest possible scope. Avoid globals except process-wide config loaded at startup.
+7. Check every return value and error. No bare `except:`, no `except Exception: pass`, no empty `catch`, no ignored `$?`. Log the error or rethrow it with context.
+8. Keep metaprogramming and macros to a minimum. No `eval`, no heavy preprocessor, and no dynamic code generation unless it is the language's normal, reviewable idiom.
+9. Limit indirection. Avoid needless wrappers, reflection, and pointer chains. In C/C++, default to one level of dereference and do not use function pointers unless required.
+10. Warnings are errors. Use ruff and mypy for Python, eslint and tsc for JavaScript/TypeScript, `-Wall -Wextra -Werror` for C/C++, treat warnings as errors in C#, and `set -euo pipefail` in bash. Run the project's linters and tests after edits.
+
+Before changing an existing file, copy it to `<name>.bak-pre-<reason>-<timestamp>`. Prefer small, reviewable patches over refactors.
+

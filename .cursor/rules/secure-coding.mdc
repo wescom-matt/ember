@@ -1,0 +1,36 @@
+---
+description: NASA-STD-1006 and SEI CERT secure coding, plus OWASP/CWE support
+alwaysApply: true
+---
+
+# Secure Coding
+
+Default cybersecurity rules for Python, JavaScript/TypeScript, C, C++, C#, and shell. Adapted from NASA-STD-1006A (Space System Protection Standard, approved 2022-07-15) and the SEI CERT Secure Coding standards, with the OWASP Top 10 and CWE Top 25 as supporting references. NASA-STD-1006A is a system-protection standard—maintain command authority, encrypt and authenticate command paths, protect critical information, stay resilient, and report anomalies—not a line-by-line coding standard. CERT supplies the coding rules; 1006 principles are applied to software.
+
+1. Never trust input. Validate type, length, range, and meaning at every trust boundary (API, CLI, files, network, browser, environment). Prefer allowlists. Server-side checks are required; client-side checks are not enough. (SEI CERT input validation; OWASP, CWE Top 25)
+2. Stop injection at the API. Use parameterized queries and safe library calls. Never build SQL, shell, LDAP, or HTML from concatenated untrusted strings. In Python use bound parameters and `subprocess` argument lists, not `shell=True` or f-string SQL. In JS/TS and C# use parameterized queries and contextual output encoding. In shell quote expansions, use arrays, and never `eval` untrusted data. (SEI CERT; OWASP A03; CWE-89, CWE-78, CWE-79)
+3. Keep secrets out of code, logs, and the repo. Load credentials from a local secrets file or the environment. Never hard-code, commit, print, or copy passwords, tokens, keys, or connection strings. (NASA-STD-1006A SSPR 3, protect confidentiality of critical information; SEI CERT MSC18-C / MSC41-C)
+4. Least privilege. Run services as an unprivileged user. Grant only the file, database, and network rights needed. Open only required ports and interfaces. (NASA-STD-1006A section 4.1, prevent unauthorized access)
+5. Handle memory and integers safely. Check bounds and sizes before copies, indexes, and allocations. Watch for overflow, wraparound, and truncation, especially from untrusted input. In C/C++ follow SEI CERT MEM and INT rules: no buffer overflows, no use-after-free, free only owned memory. In Python, JS/TS, and C#, still cap lengths and check indexes and sizes from untrusted data. (SEI CERT MEM, INT)
+6. Fail securely and handle every error. Default to deny. On failure, leave systems in a safe state and do not leak stack traces, paths, or internals to users. Check every return value. No bare `except:`, no `except Exception: pass`, no empty `catch`, no ignored `$?`. Log the error or rethrow it with context. (SEI CERT; OWASP error handling)
+7. Pin and patch dependencies. Lock versions, review new packages, and apply security updates. Do not install untrusted or unsigned packages, or copy-pasted install scripts from the web. (OWASP A06; CWE Top 25 / software supply chain)
+8. Authenticate privileged actions and protect sessions. Every sensitive operation needs a proven auth check. Use standard session or token handling: secure cookies, rotation, expiration, and logout. Do not roll your own crypto or auth. (NASA-STD-1006A SSPR 1 and SSPR 2, encrypt the command path and authenticate backup or fallback paths; OWASP A07)
+9. Encrypt sensitive data in transit and at rest. Use TLS for network traffic. Encrypt stored credentials and other sensitive data with proven libraries. Prefer algorithms and modules that meet FIPS 140 Level 1 or better. (NASA-STD-1006A SSPR 1; SEI CERT sensitive-data handling)
+10. Minimize the attack surface, default to secure, and audit without leaking. Bind to localhost unless a wider bind is required and documented. Disable unused features, debug endpoints, and directory listings. Log security-relevant events (auth, access, failures, anomalies) without secrets, tokens, or personal data. (NASA-STD-1006A section 4.1 and SSPR 5, report unexplained interference; SEI CERT; OWASP A09)
+
+## Python
+
+SEI CERT has no official Python standard. This section follows the Bandit security checks (Bandit is the standard Python security scanner) plus CERT principles.
+
+- Do not use `pickle`, `marshal`, or `shelve` on untrusted data.
+- Load YAML with `yaml.safe_load` only. Parse untrusted XML with `defusedxml`.
+- Do not call `eval`, `exec`, or `compile` on input.
+- Run subprocesses with argument lists. No `shell=True` and no `os.system`.
+- Use `secrets`, not `random`, for tokens. Use SHA-256 or stronger in `hashlib`; do not use MD5 or SHA-1 for security. Hash passwords with a proper KDF (bcrypt, argon2, or scrypt).
+- Create temporary files with `tempfile.mkstemp` or `NamedTemporaryFile`, not `mktemp`.
+- Call `requests` and `httpx` with a timeout and `verify=True`.
+- Do not use `assert` for security checks; they are stripped by `-O`.
+- When joining paths, resolve the result and confirm it stays inside the base directory.
+- Run `bandit -r` and `pip-audit` in project checks.
+
+Do not print or save credentials. Do not weaken these rules for convenience.

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Ember helper: ember start|stop|restart|status|logs|url, or any CLI command
+# (create-admin, reset-password, list-users, version).
+set -euo pipefail
+EMBER_HOME="${EMBER_HOME:-$HOME/ember}"
+ENV_FILE="$HOME/.config/ember/ember.env"
+
+load_env() {
+  if [[ -f "$ENV_FILE" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source <(sed "s|%h|$HOME|g" "$ENV_FILE")
+    set +a
+  fi
+}
+
+case "${1:-}" in
+  start|stop|restart)
+    systemctl --user "$1" ember.service
+    systemctl --user --no-pager --lines=0 status ember.service | head -n 3
+    ;;
+  status)
+    systemctl --user --no-pager --lines=5 status ember.service || true
+    ;;
+  logs)
+    journalctl --user -u ember.service --no-pager -n "${2:-50}"
+    ;;
+  url)
+    load_env
+    echo "https://$(hostname -I | awk '{print $1}'):${EMBER_PORT:-8600}"
+    ;;
+  ""|-h|--help|help)
+    echo "usage: ember start|stop|restart|status|logs [N]|url"
+    echo "       ember create-admin NAME | reset-password NAME | list-users | version"
+    ;;
+  *)
+    load_env
+    exec "$EMBER_HOME/.venv/bin/python" -m ember "$@"
+    ;;
+esac

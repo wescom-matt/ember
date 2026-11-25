@@ -1,0 +1,17 @@
+[Unit]
+Description=Ember offline chat (web)
+After=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/ember/ember.env
+WorkingDirectory=%h/ember
+ExecStart=%h/ember/.venv/bin/python -m ember serve
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+Nice=5
+
+[Install]
+WantedBy=default.target
