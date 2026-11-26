@@ -12,7 +12,7 @@ for b in "$src"/*.bundle; do
   [[ -f "$b" ]] || continue
   name="$(basename "$b" .bundle)"
   repo="$git_dir/$name.git"
-  git bundle verify -q "$b" >/dev/null 2>&1 || { echo "skip $name: bad bundle"; continue; }
+  git bundle list-heads "$b" >/dev/null 2>&1 || { echo "skip $name: bad bundle"; continue; }
   if [[ ! -d "$repo" ]]; then
     git init -q --bare "$repo"
     git -C "$repo" remote add origin "https://github.com/wescom-matt/$name.git"
