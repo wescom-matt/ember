@@ -73,7 +73,7 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 - Pick a **Project** in the chat: Ember adds the project's notes and the few most relevant pieces of code to each turn, inside the model's small memory.
 - **Small steps** breaks a job into tiny steps, each with a fresh small context. Long chats are summarized automatically. Build errors are trimmed to the first real error. File changes are small diffs you confirm.
 - **8k model** (`qwen3.5-9b-8k`): more memory, about twice as slow on full turns (sample: 102 s vs 50 s to the first word on the P1). 4k stays the default. Workshop → Models shows the numbers.
-- **AMSAT pack** in the radio library: satellite frequencies (SatNOGS), TLEs (CelesTrak, AMSAT), Doppler, Hamlib rig and rotator control, Gpredict, phased-array pointing, radar tracking basics and satellite handoff. Refresh TLEs when online.
+- **AMSAT pack** in the radio library: satellite frequencies (SatNOGS), TLEs (CelesTrak, AMSAT), Doppler, Hamlib rig and rotator control, Gpredict, phased-array pointing, radar tracking basics, satellite handoff, radar/ADS-B-cued steering for aircraft scatter, VHF contest rules and NEC-modeled 2 m/70 cm Yagi designs. Refresh TLEs when online.
 
 ### Important files
 

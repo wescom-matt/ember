@@ -214,11 +214,11 @@ Images are stored per radio in `~/.local/share/ember/radios/<id>/`, each with a 
 
 ## 9. Radio reference library
 
-An offline, searchable library. Pick **Radio reference** in the chat. Answers cite the source, and Ember won't invent frequencies. Rules and orbits change, so check the source date for anything that matters. Stored in `~/.local/share/ember/radio-kb/` (about 20 MB with the AMSAT pack); every source, its licence, date and checksum is listed in `radio-kb/SOURCES.json`.
+An offline, searchable library. Pick **Radio reference** in the chat. Answers cite the source, and Ember won't invent frequencies. Rules and orbits change, so check the source date for anything that matters. Stored in `~/.local/share/ember/radio-kb/` (about 23 MB with the AMSAT pack); every source, its licence, date and checksum is listed in `radio-kb/SOURCES.json`.
 
 **Core (23 sources):** the ARRL band plan, FCC Part 97 (amateur) and Part 95 (GMRS, FRS, MURS, CB), the marine, aviation and Part 90 frequency rules, USCG marine channels, NOAA weather radio, NOAA space weather and background pages.
 
-**AMSAT pack (34 sources, ~11 MB raw, ~2,200 passages):** for amateur satellite work.
+**AMSAT pack (50 sources, ~14 MB raw, ~2,600 passages in the whole library):** for amateur satellite, aircraft scatter and VHF/UHF antenna work.
 - **Satellites and frequencies:** SatNOGS DB (CC BY-SA 4.0): every in-orbit amateur satellite's active transmitters, with uplink/downlink, mode, baud and inverting flag (for example RS-44's V/U linear transponder).
 - **TLEs:** CelesTrak's amateur group and AMSAT's `nasabare.txt` (public orbital data). They're also saved as plain files in `radio-kb/tle/`, so Gpredict can import them offline (Edit → Update TLE → from local files).
 - **Ember guides** (written for Ember, in `docs/amsat/`):
@@ -229,18 +229,23 @@ An offline, searchable library. Pick **Radio reference** in the chat. Answers ci
   - pointing a phased array from az/el (element phases, true time delay, grating lobes)
   - radar basics (pulse, FMCW), monopulse and beam-steered tracking, alpha-beta and Kalman track filters
   - beam update timing, pass scheduling, make-before-break handoff between satellites and Doppler hand-over
+  - **cued beam steering** for ham links: a radar, ADS-B or orbit-prediction track turned into az/el and then into array or rotator pointing (frame conversion, track filter, latency prediction, Doppler); **aircraft scatter** on 2 m/70 cm/23 cm with ADS-B scheduling; and an overview of the VHF/UHF contest rules (ARRL, CQ WW VHF, IARU Region 1)
+  - **2 m and 70 cm Yagis:** element tables for 3-11 elements (144.2 MHz), 7-17 elements (432.1 MHz) and satellite 4-element (145.9) and 7-element (435.5) designs, designed and modeled by Ember with NEC-2 (gain, F/B, impedance, beamwidth, DL6WU stacking distances). Also boom correction, matching (folded dipole, 4:1 balun, hairpin, gamma, 28 ohm with 75 ohm quarter-wave lines), cross-Yagis for circular polarisation and xnec2c modeling notes with a sample NEC deck. These are starting points: model and measure your build.
 - **Software docs:**
   - Hamlib `rigctld`/`rigctl`/`rotctld`/`rotctl` man pages (GPL)
   - Gpredict rig notes for the IC-9700, IC-9100, IC-910 and FT-847, plus its time-keeping note (GPL)
   - the KrakenSDR DoA software README (GPL-3.0)
+  - the xnec2c README (GPL) and the dump1090-fa ADS-B decoder README (GPL-2.0+)
 - **Tutorials and background:**
   - PySDR chapters on beamforming/DOA, the Phaser (CN0566) phased array and PlutoSDR (CC BY-NC-SA 4.0: free to keep and share, not for commercial use)
-  - Wikipedia (CC BY-SA 4.0) on amateur satellites, TLEs, SGP4, Doppler, az/el coordinates, phased arrays, beamforming, beam steering, monopulse, FMCW and pulse-Doppler radar, radar trackers, alpha-beta and Kalman filters, handover and direction finding
+  - Wikipedia (CC BY-SA 4.0) on amateur satellites, TLEs, SGP4, Doppler, az/el coordinates, phased arrays, beamforming, beam steering, monopulse, FMCW and pulse-Doppler radar, radar trackers, alpha-beta and Kalman filters, handover, direction finding, the Yagi-Uda antenna, antenna gain, front-to-back ratio, baluns, folded dipoles, antenna arrays, radiation patterns, NEC, ADS-B, tropospheric propagation, radio horizon and amateur radio contests
 - **Left out on purpose** (no open licence):
   - the AMSAT status and frequency pages
   - JE9PEL's satellite list
   - the KrakenSDR wiki and manuals
   - the Analog Devices wiki
+  - published DK7ZB, DL6WU and Cushcraft element tables (copyrighted). Ember's own NEC-modeled designs follow the same long-Yagi spacing method instead.
+  - AirScout, which is only mentioned by name
 
 Refresh while online on the P1:
 - `.venv/bin/python scripts/fetch_radio_kb.py --only amsat` updates TLEs and SatNOGS. Do it weekly before satellite work.
@@ -469,7 +474,7 @@ It checks Nomad and Qdrant read-only and never changes them. Steps that need sud
 | `ember-wheels/` | Ember's packages | ~0.03 GB |
 | `buildtools/` | CHIRP, PlatformIO + ESP32 packages, esptool, arduino-cli, OrcaSlicer, ElegooSlicer, CC2 profiles | ~5.4 GB |
 | `parts/` | Parts library (skipped if bigger than `--parts-gb`, default 3) | ~1 GB |
-| `radio-kb/` | Radio reference library with the AMSAT pack | ~20 MB |
+| `radio-kb/` | Radio reference library with the AMSAT pack | ~23 MB |
 | `buildhost/pio-envs/` | Outpost's PlatformIO cores: pioarduino 55.03.312 (ship env, Outpost 2.0) ~5.5 GB, espressif32 7.1.3 (legacy env) ~2 GB | ~7.5 GB |
 | `projects/` | Library versions, Python wheels, npm cache, Node, NuGet packages, MANIFEST.json | ~0.7 GB |
 | `repos/` | `git bundle` of all 12 repos, plus issues and PRs | ~0.06 GB |
@@ -600,4 +605,4 @@ Requirements are pinned with hashes; regenerate them with `uv pip compile requir
 | 0.3.1 | Full README and recovery plan |
 | 0.4.0 | Workshop refocus: host roles, CHIRP radio programming, radio library, build hosts, CC2 printer and slicing, parts library (200 parts, 214 guides), fix mode |
 | 0.5.0 | Off-grid project work: Projects view, repo mirrors and offline git, Outpost PlatformIO and package caches, developer reference (ESP32/LoRa, Heltec V4, AX.25/X.25), Outpost 2.0 (Heltec V4-R8) starter, general chat documented |
-| 0.6.0 | Small-model helpers: context budget and indicator, code index, project notes, small-step mode, rolling summary, trimmed build errors, edit-by-diff; `qwen3.5-9b-8k` with a measured speed sample and Models page; AMSAT pack (satellites, TLEs, Doppler, rig/rotator control, phased arrays, radar tracking, handoff) |
+| 0.6.0 | Small-model helpers: context budget and indicator, code index, project notes, small-step mode, rolling summary, trimmed build errors, edit-by-diff; `qwen3.5-9b-8k` with a measured speed sample and Models page; AMSAT pack (satellites, TLEs, Doppler, rig/rotator control, phased arrays, radar tracking, handoff, radar/ADS-B-cued steering, aircraft scatter and contests, NEC-modeled 2 m/70 cm Yagis) |

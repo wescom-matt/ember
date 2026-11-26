@@ -31,7 +31,7 @@ You end up with:
 | `coldboot-cache/ember-wheels/` | Ember's Python packages | ~0.03 GB |
 | `coldboot-cache/buildtools/` | CHIRP, PlatformIO + ESP32 packages, esptool, arduino-cli, OrcaSlicer and ElegooSlicer, Centauri Carbon 2 profiles | ~5.4 GB |
 | `coldboot-cache/parts/` | Parts library: openly licensed 3D models and iFixit guides (cap with `--parts-gb N`, default 3) | ~1 GB |
-| `coldboot-cache/radio-kb/` | Radio reference library (band plan, FCC rules, channel lists) and the AMSAT pack (SatNOGS frequencies, TLEs, Hamlib/Gpredict docs, phased-array and radar guides) | ~20 MB |
+| `coldboot-cache/radio-kb/` | Radio reference library (band plan, FCC rules, channel lists) and the AMSAT pack (SatNOGS frequencies, TLEs, Hamlib/Gpredict docs, phased-array, radar-cued steering, aircraft scatter and Yagi guides) | ~23 MB |
 | `coldboot-cache/buildhost/pio-envs/` | Outpost's PlatformIO cores (pioarduino 55.03.312, espressif32 7.1.3, native) | ~7.5 GB |
 | `coldboot-cache/projects/` | Library versions, Python wheels, npm cache, Node, NuGet packages, `MANIFEST.json` | ~0.7 GB |
 | `coldboot-cache/repos/` | `git bundle` of all 12 wescom-matt repos, plus issues and PRs | ~0.06 GB |

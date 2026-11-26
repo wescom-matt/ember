@@ -93,6 +93,18 @@ AMSAT_SOURCES: list[dict[str, str]] = [
         "title": "Ember guide - radar basics, monopulse, track filters, beam steering, satellite handoff",
     },
     {
+        "id": "radar-cued-guide",
+        "kind": "local",
+        "url": "docs/amsat/radar-cued-steering.md",
+        "title": "Ember guide - radar/ADS-B/TLE-cued beam steering, aircraft scatter, VHF contest rules overview",
+    },
+    {
+        "id": "yagi-guide",
+        "kind": "local",
+        "url": "docs/amsat/yagi-reference.md",
+        "title": "Ember guide - 2 m and 70 cm Yagi designs (NEC-modeled), stacking, matching, cross-Yagi, NEC2 notes",
+    },
+    {
         "id": "hamlib-rigctld",
         "kind": "roff",
         "url": f"{GH}/Hamlib/Hamlib/master/doc/man1/rigctld.1",
@@ -170,6 +182,30 @@ AMSAT_SOURCES: list[dict[str, str]] = [
         "url": "https://pysdr.org/content/pluto.html",
         "title": "PySDR - PlutoSDR in Python (CC BY-NC-SA 4.0)",
     },
+    {
+        "id": "xnec2c-readme",
+        "kind": "text",
+        "url": f"{GH}/KJ7LNW/xnec2c/master/README.md",
+        "title": "xnec2c README - NEC2 antenna modeling (GPL)",
+    },
+    {
+        "id": "dump1090-fa-readme",
+        "kind": "text",
+        "url": f"{GH}/flightaware/dump1090/master/README.md",
+        "title": "dump1090-fa README - ADS-B decoder for aircraft scatter scheduling (GPL-2.0+)",
+    },
+    {
+        "id": "wiki-yagi-uda-antenna",
+        "kind": "html",
+        "url": WIKI + "Yagi%E2%80%93Uda_antenna",
+        "title": "Wikipedia - Yagi-Uda antenna (CC BY-SA 4.0)",
+    },
+    {
+        "id": "wiki-ads-b",
+        "kind": "html",
+        "url": WIKI + "Automatic_Dependent_Surveillance%E2%80%93Broadcast",
+        "title": "Wikipedia - Automatic Dependent Surveillance-Broadcast (ADS-B) (CC BY-SA 4.0)",
+    },
 ] + [
     {
         "id": f"wiki-{slug.lower().replace('_', '-')[:30]}",
@@ -194,6 +230,16 @@ AMSAT_SOURCES: list[dict[str, str]] = [
         "Kalman_filter",
         "Handover",
         "Direction_finding",
+        "Antenna_gain",
+        "Front-to-back_ratio",
+        "Balun",
+        "Folded_dipole",
+        "Antenna_array",
+        "Radiation_pattern",
+        "Numerical_Electromagnetics_Code",
+        "Tropospheric_propagation",
+        "Radio_horizon",
+        "Amateur_radio_contest",
     )
 ]
 

@@ -455,3 +455,15 @@ def test_amsat_guides_cover_topics() -> None:
     ):
         assert word.lower() in text.lower(), word
     json.dumps(text)
+
+
+def test_cued_steering_and_yagi_guides() -> None:
+    root = Path(__file__).resolve().parent.parent / "docs/amsat"
+    cued = (root / "radar-cued-steering.md").read_text().lower()
+    for word in ("ads-b", "aircraft scatter", "latency", "enu", "msk144", "arrl vhf", "part 97"):
+        assert word in cued, word
+    yagi = (root / "yagi-reference.md").read_text().lower()
+    for word in ("144.2 mhz", "432.1 mhz", "stacking", "boom correction", "cross-yagi", "xnec2c", "gw 1 21"):
+        assert word in yagi, word
+    ids = {s["id"] for s in fetch_radio_kb.all_sources()}
+    assert {"radar-cued-guide", "yagi-guide", "xnec2c-readme", "dump1090-fa-readme", "wiki-yagi-uda-antenna"} <= ids
