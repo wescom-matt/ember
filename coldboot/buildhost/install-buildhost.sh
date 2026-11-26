@@ -70,8 +70,15 @@ python_bin() {
 # make_venv DIR REQFILE WHEELDIR
 make_venv() {
   local dir="$1" req="$2" wheels="$3" py
-  py="$(python_bin)" || { SUDO_NEED+=("sudo apt install -y python3-venv python3-pip"); info "python3 venv missing (see sudo steps)"; return 1; }
-  act "create venv $dir" "$py" -m venv "$dir"
+  local uv="${UV:-$HOME/.local/bin/uv}"
+  if py="$(python_bin)"; then
+    act "create venv $dir" "$py" -m venv "$dir"
+  elif [[ -x "$uv" ]]; then
+    # no system venv module: use uv's own Python 3.12 (user-level, no sudo)
+    act "create venv $dir (uv)" "$uv" venv -q --seed --python 3.12 "$dir"
+  else
+    SUDO_NEED+=("sudo apt install -y python3-venv python3-pip"); info "python3 venv missing (see sudo steps)"; return 1
+  fi
   if [[ -n "$CACHE" && -d "$wheels" ]]; then
     act "install $(basename "$req") from cache" "$dir/bin/pip" install -q --no-index --find-links "$wheels" --require-hashes -r "$req"
   else
