@@ -26,7 +26,7 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 | **Goose 1.59.1** | A terminal AI agent. Set to **ask before every action**. | command `goose` |
 | **goose-lw** | Goose in two steps: one model writes a plan, then a worker carries it out, asking before each command. | command `goose-lw "task"` |
 | **ai-interp** | Open Interpreter with the local Nomad profile. Asks before running any code. | command `ai-interp` |
-| **Ember** | The web chat app, like Grok Bot but offline. Used from any browser on the home network. | `~/ember`, **https://192.168.1.177:8600** |
+| **Ember** | The offline workshop assistant: radio programming, code/build/flash, the 3D printer, installing and fixing computers, plus chat. Used from any browser on the home network. | `~/ember`, **https://192.168.1.177:8600** |
 | **ColdBoot** | The rebuild, backup and restore tool for all of the above (except Nomad itself). | `~/ember/coldboot.sh` |
 
 ### Ember in more detail
@@ -72,6 +72,8 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 | `~/.config/ember/tls/` | Ember's web certificate |
 | `~/.config/goose/config.yaml` | Goose settings |
 | `~/AI-AGENTS-README.md` | Short how-to for the agents on the P1 |
+| `~/.local/share/ember/radios/` | Your radio backups and edited images. **Not in the ColdBoot backup**: copy this folder to the USB yourself. |
+| `~/.local/share/ember/parts/`, `radio-kb/` | Parts library and radio library (rebuilt from the USB cache or re-downloaded) |
 | `~/agent-stack-backup/` | The older rebuild kit (still works) |
 
 ---
@@ -86,6 +88,7 @@ On the P1, with the USB plugged in (it appears as something like `/media/matt/US
 cd ~/ember
 ./coldboot.sh cache  /media/matt/USB/coldboot-cache     # about 19 GB, 20-40 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups      # a few MB, do this often
+cp -a ~/.local/share/ember/radios /media/matt/USB/radio-images   # your radio backups
 ```
 
 What ends up on it:
@@ -196,7 +199,7 @@ Put only the `.pub` file on limited accounts. Details: `~/agent-stack-backup/ssh
 
 ## Part 5. Later: Tailscale (remote access)
 
-Tailscale is not installed yet. A local helper is setting it up. When it is:
+Tailscale is not installed yet. It will be set up when you are home with the P1 (it needs sudo and your Tailscale login). Once it is:
 - Ember stays on the home network address; Tailscale just gives a private route to it from away.
 - Until then, use an SSH tunnel from a computer that can reach the P1:
   `ssh -L 8600:127.0.0.1:8600 matt@192.168.1.177`, then open `https://localhost:8600`.

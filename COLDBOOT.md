@@ -17,6 +17,7 @@ Use a 32 GB USB disk. Plug it into the P1. It shows up as something like
 cd ~/ember
 ./coldboot.sh cache /media/matt/USB/coldboot-cache     # about 19 GB; takes 20-40 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups     # a few MB
+cp -a ~/.local/share/ember/radios /media/matt/USB/radio-images   # radio backups (not in the ColdBoot backup)
 ```
 
 You end up with:
@@ -126,6 +127,8 @@ Forgot the password: `ember reset-password matt`. List accounts: `ember list-use
 
 ## 6. After the rebuild
 
+- **Tailscale** (remote access) is not part of ColdBoot. It isn't installed yet; set it up when you're home with the P1, and again after any Ubuntu reinstall.
+
 - **Radio and build hosts** (Mint, Zorin, Los Gatos): on each Linux host run
   `bash ~/ember/coldboot/buildhost/install-buildhost.sh --cache /media/USB/coldboot-cache` (or `--radio`/`--build`
   online), then run the `~/buildhost-sudo-steps.sh` it writes (serial-port group, udev rules, slicer library).
@@ -152,6 +155,9 @@ Forgot the password: `ember reset-password matt`. List accounts: `ember list-use
 | Browser warns about the certificate | Expected (self-signed). Accept it once. |
 | `archive checksum does NOT match` | That backup is damaged or was changed. Use an older one. |
 | `repo is at ... expects ~/ember` | Move the repo: `mv <path> ~/ember`. |
+| "CHIRP helper not installed" in Ember | `bash ~/ember/coldboot/buildhost/install-buildhost.sh --chirp-only` (or `./coldboot.sh install --cache DIR`). |
+| Parts library or radio library empty | `./coldboot.sh install --cache DIR` copies them from the USB; online, run `scripts/parts_import.py seed` / `scripts/fetch_radio_kb.py`. |
+| Radio/build host tools missing after a rebuild | Run `install-buildhost.sh` on that computer, then its `~/buildhost-sudo-steps.sh`. |
 
 Recipes for the custom models: `coldboot/Modelfiles.md`. Model list: `coldboot/models.json`.
 The older kit `~/agent-stack-backup` (with `rebuild.sh`) still works; ColdBoot also reads
