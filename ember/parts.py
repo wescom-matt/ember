@@ -25,7 +25,7 @@ NAME_OK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._()+-]{0,119}$")
 # Open licenses only. NC/ND variants are fine for a personal offline library (recorded as-is).
 LICENSE_OK = re.compile(
     r"^(CC0(-1\.0)?|CC-BY(-SA|-NC|-ND|-NC-SA|-NC-ND)?(-[0-9.]+)?|GPL-[23]\.0(-only|-or-later)?|LGPL-[0-9.]+.*|"
-    r"AGPL-3\.0.*|MIT|BSD-[0-9]-Clause|Apache-2\.0|CERN-OHL-[A-Z]-2\.0|Public-Domain)$"
+    r"AGPL-3\.0.*|MIT|BSD-[0-9]-Clause|0BSD|ISC|MPL-2\.0|Apache-2\.0|CERN-OHL-[A-Z]-2\.0|Public-Domain)$"
 )
 CATEGORIES = (
     "printer-parts",
@@ -34,6 +34,10 @@ CATEGORIES = (
     "off-grid",
     "electronics-enclosure",
     "antenna-radio",
+    "radio-mounts",
+    "plumbing",
+    "cable-management",
+    "solar-battery",
     "tools",
     "storage",
     "other",
@@ -77,7 +81,8 @@ def check_license(lic: str) -> str:
 
 def safe_name(name: str) -> str:
     base = Path(name.replace("\\", "/")).name
-    base = re.sub(r"[^A-Za-z0-9 ._()+-]", "_", base)[:120].lstrip(".") or "file"
+    base = re.sub(r"[^A-Za-z0-9 ._()+-]", "_", base)[:120]
+    base = re.sub(r"^[^A-Za-z0-9]+", "", base) or "file"
     if not NAME_OK.fullmatch(base):
         raise PartsError("bad file name")
     return base
@@ -209,6 +214,26 @@ def search(conn: sqlite3.Connection, query: str, limit: int) -> list[dict[str, A
             ).fetchone()
             if g:
                 out.append({"kind": "guide", **dict(g)})
+    return out
+
+
+def remove_part(conn: sqlite3.Connection, data_dir: Path, part_id: int) -> bool:
+    """Delete one part and its files (e.g. a license turned out wrong)."""
+    if not conn.execute("SELECT 1 FROM parts WHERE id = ?", (part_id,)).fetchone():
+        return False
+    conn.execute("DELETE FROM parts WHERE id = ?", (part_id,))
+    conn.execute("DELETE FROM search WHERE kind = 'part' AND ref = ?", (part_id,))
+    conn.commit()
+    shutil.rmtree(root(data_dir) / "files" / str(int(part_id)), ignore_errors=True)
+    return True
+
+
+def known_hashes(conn: sqlite3.Connection) -> set[str]:
+    """SHA-256 of every stored file (for de-duplication across sources)."""
+    out: set[str] = set()
+    for (files,) in conn.execute("SELECT files FROM parts"):
+        out.update(str(f.get("sha256", "")) for f in json.loads(files or "[]"))
+    out.discard("")
     return out
 
 

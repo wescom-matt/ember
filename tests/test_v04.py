@@ -375,3 +375,71 @@ def test_buildhost_script_dry_run(tmp_path: Path) -> None:
         pytest.skip("no bash")
     out = subprocess.run(["bash", str(script), "--help"], capture_output=True, text=True, check=True)  # noqa: S603,S607
     assert "--chirp-only" in out.stdout
+
+
+# ---------- parts seed: licenses, de-dup, cap ----------
+def _importer() -> Any:
+    import importlib.util  # noqa: PLC0415
+
+    path = Path(__file__).resolve().parent.parent / "scripts/parts_import.py"
+    spec = importlib.util.spec_from_file_location("parts_import", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _tarball(files: dict[str, bytes]) -> bytes:
+    import io  # noqa: PLC0415
+    import tarfile  # noqa: PLC0415
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for name, data in files.items():
+            info = tarfile.TarInfo("repo-main/" + name)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
+
+
+MIT_TEXT = b"MIT License\nPermission is hereby granted, free of charge"
+
+
+def test_seed_license_rules_dedup_and_cap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pi = _importer()
+    assert pi.license_text_matches("MIT", MIT_TEXT.decode())
+    assert not pi.license_text_matches("GPL-3.0", MIT_TEXT.decode())
+    assert pi.license_text_matches("CC-BY-NC-4.0", "Creative Commons Attribution-NonCommercial")
+    repos = {
+        "a/clean": {"LICENSE": MIT_TEXT, "knob.stl": b"solid a", "dup.stl": b"solid same"},
+        "a/mixed": {"LICENSE": MIT_TEXT, "LICENSE-CASE.md": b"CC BY-NC", "case.stl": b"solid b"},
+        "a/sub": {"LICENSE": MIT_TEXT, "own.stl": b"solid c", "vendor/LICENSE.txt": b"other", "vendor/v.stl": b"x"},
+        "a/copy": {"LICENSE": MIT_TEXT, "again.stl": b"solid same"},
+    }
+    monkeypatch.setattr(pi, "get", lambda url, limit=0: _tarball(repos["/".join(url.split("/")[3:5])]))
+    conn = parts.open_db(tmp_path)
+    seen = parts.known_hashes(conn)
+    budget = pi.Budget(10_000)
+    src = {"ref": "main", "license": "MIT", "category": "household"}
+    assert pi.seed_github(conn, tmp_path, {**src, "repo": "a/clean"}, budget, seen) == 1
+    assert pi.seed_github(conn, tmp_path, {**src, "repo": "a/mixed"}, budget, seen) == 0  # two root licenses
+    assert pi.seed_github(conn, tmp_path, {**src, "repo": "a/sub"}, budget, seen) == 1
+    sub = parts.search(conn, "sub", 5)[0]
+    assert [f["name"] for f in sub["files"]] == ["own.stl"]  # vendor/ has its own license -> left out
+    assert pi.seed_github(conn, tmp_path, {**src, "repo": "a/copy"}, budget, seen) == 0  # identical file
+    assert pi.seed_github(conn, tmp_path, {**src, "repo": "a/clean"}, budget, seen) == 0  # already there
+    assert (
+        pi.seed_github(
+            conn,
+            tmp_path,
+            {**src, "repo": "a/mixed", "license": "CC-BY-NC-4.0", "license_file": "LICENSE-CASE.md"},
+            budget,
+            seen,
+        )
+        == 0
+    )  # vague text
+    tiny = pi.Budget(1)
+    repos["a/big"] = {"LICENSE": MIT_TEXT, "big.stl": b"solid big part"}
+    assert pi.seed_github(conn, tmp_path, {**src, "repo": "a/big"}, tiny, seen) == 0 and tiny.full
+    pid = sub["id"]
+    assert parts.remove_part(conn, tmp_path, pid) and not parts.remove_part(conn, tmp_path, pid)

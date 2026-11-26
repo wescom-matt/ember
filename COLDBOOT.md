@@ -15,7 +15,7 @@ Use a 32 GB USB disk. Plug it into the P1. It shows up as something like
 
 ```bash
 cd ~/ember
-./coldboot.sh cache /media/matt/USB/coldboot-cache     # about 18 GB; takes 20-40 minutes
+./coldboot.sh cache /media/matt/USB/coldboot-cache     # about 19 GB; takes 20-40 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups     # a few MB
 ```
 
@@ -29,7 +29,7 @@ You end up with:
 | `coldboot-cache/python/` | uv, Python 3.12 and Open Interpreter's packages | ~0.2 GB |
 | `coldboot-cache/ember-wheels/` | Ember's Python packages | ~0.03 GB |
 | `coldboot-cache/buildtools/` | CHIRP, PlatformIO + ESP32 packages, esptool, arduino-cli, OrcaSlicer and ElegooSlicer, Centauri Carbon 2 profiles | ~5.4 GB |
-| `coldboot-cache/parts/` | Parts library: openly licensed 3D models and iFixit guides (cap with `--parts-gb N`, default 3) | ~0.2 GB |
+| `coldboot-cache/parts/` | Parts library: openly licensed 3D models and iFixit guides (cap with `--parts-gb N`, default 3) | ~1 GB |
 | `coldboot-cache/radio-kb/` | Radio reference library (band plan, FCC rules, channel lists) | ~7 MB |
 | `coldboot-cache/arduino/` | Arduino ESP32 core, only with `--with-arduino-core` (then use a 64 GB disk) | ~9 GB |
 | `coldboot-cache/ember.bundle` | A full copy of this repo (in case GitHub is unreachable) | small |

@@ -112,5 +112,175 @@
    "radio_stand_42mm.stl"
   ],
   "description": "Parametric OpenSCAD design; edit radio_stand.scad to change sizes."
+ },
+ {
+  "name": "Dipole center insulator - SO-239",
+  "category": "antenna-radio",
+  "tags": "dipole center insulator so-239 feedpoint balun wire antenna",
+  "notes": "ASA/PETG outdoors (UV), 100% infill for load-bearing parts. Check your SO-239 flange hole spacing (18.3 mm typical).",
+  "scad": "dipole_center.scad",
+  "stl": [
+   "dipole_center_so239.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit dipole_center.scad to change sizes."
+ },
+ {
+  "name": "Antenna end insulator (dog bone)",
+  "category": "antenna-radio",
+  "tags": "end insulator dogbone wire antenna dipole",
+  "notes": "ASA/PETG outdoors (UV), 100% infill for load-bearing parts. ",
+  "scad": "end_insulator.scad",
+  "stl": [
+   "end_insulator_70mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit end_insulator.scad to change sizes."
+ },
+ {
+  "name": "Coax strain relief clip",
+  "category": "antenna-radio",
+  "tags": "coax strain relief clip rg58 rg8x lmr400 feedline",
+  "notes": "ASA/PETG outdoors (UV), 100% infill for load-bearing parts. Screw down and add zip ties.",
+  "scad": "coax_strain_relief.scad",
+  "stl": [
+   "coax_strain_relief_rg58.stl",
+   "coax_strain_relief_rg8x.stl",
+   "coax_strain_relief_lmr400.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit coax_strain_relief.scad to change sizes."
+ },
+ {
+  "name": "Mast / pipe saddle clamp",
+  "category": "antenna-radio",
+  "tags": "mast clamp pipe saddle antenna mount",
+  "notes": "ASA/PETG outdoors (UV), 100% infill for load-bearing parts. Print two halves and bolt together with M6.",
+  "scad": "mast_clamp.scad",
+  "stl": [
+   "mast_clamp_25mm.stl",
+   "mast_clamp_32mm.stl",
+   "mast_clamp_42mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit mast_clamp.scad to change sizes."
+ },
+ {
+  "name": "Yagi / J-pole element holder",
+  "category": "antenna-radio",
+  "tags": "yagi j-pole element holder boom clamp",
+  "notes": "ASA/PETG outdoors (UV), 100% infill for load-bearing parts. Measure your boom and element rod.",
+  "scad": "element_holder.scad",
+  "stl": [
+   "element_holder_20sq_4.8mm.stl",
+   "element_holder_25round_6.35mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit element_holder.scad to change sizes."
+ },
+ {
+  "name": "BNC panel mount",
+  "category": "antenna-radio",
+  "tags": "bnc bulkhead panel mount",
+  "notes": "ASA/PETG outdoors (UV), 100% infill for load-bearing parts. ",
+  "scad": "sma_mount.scad",
+  "stl": [
+   "bnc_mount_9.7mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit sma_mount.scad to change sizes."
+ },
+ {
+  "name": "HT radio holder - Baofeng / AnyTone",
+  "category": "radio-mounts",
+  "tags": "baofeng uv-5r bf-f8 uv-9r anytone d868uv ht holder cradle mount",
+  "notes": "PETG. Sizes are approximate: measure your radio with battery and adjust width/depth.",
+  "scad": "ht_holder.scad",
+  "stl": [
+   "ht_holder_uv5r_bff8.stl",
+   "ht_holder_uv9r_plus.stl",
+   "ht_holder_anytone_d868uv.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit ht_holder.scad to change sizes."
+ },
+ {
+  "name": "Keyhole microphone hanger",
+  "category": "radio-mounts",
+  "tags": "mic hanger holder mobile rig microphone clip",
+  "notes": "PETG. Measure your mic's hanger button (head/neck diameter).",
+  "scad": "mic_hanger.scad",
+  "stl": [
+   "mic_hanger_keyhole.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit mic_hanger.scad to change sizes."
+ },
+ {
+  "name": "Desk rig tilt wedge (IC-7300 etc.)",
+  "category": "radio-mounts",
+  "tags": "ic-7300 tilt stand wedge desk rig feet",
+  "notes": "PLA/PETG. Print two; set foot_d to your rig's rubber foot.",
+  "scad": "rig_tilt_wedge.scad",
+  "stl": [
+   "rig_tilt_wedge.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit rig_tilt_wedge.scad to change sizes."
+ },
+ {
+  "name": "Drip irrigation barbed fittings 1/4 inch",
+  "category": "plumbing",
+  "tags": "drip irrigation fitting tee elbow coupler cross barb 4mm",
+  "notes": "PETG, 100% infill. Low pressure drip only.",
+  "scad": "drip_fitting.scad",
+  "stl": [
+   "drip_coupler_4mm.stl",
+   "drip_elbow_4mm.stl",
+   "drip_tee_4mm.stl",
+   "drip_cross_4mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit drip_fitting.scad to change sizes."
+ },
+ {
+  "name": "Drip tubing stake",
+  "category": "plumbing",
+  "tags": "drip irrigation stake tubing holder garden",
+  "notes": "PETG/ASA.",
+  "scad": "drip_stake.scad",
+  "stl": [
+   "drip_stake_6.5mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit drip_stake.scad to change sizes."
+ },
+ {
+  "name": "18650 cell holder grid",
+  "category": "solar-battery",
+  "tags": "18650 battery holder pack spacer lithium",
+  "notes": "PETG/ASA (heat). Spacer only: use a BMS and fuse.",
+  "scad": "battery_18650_holder.scad",
+  "stl": [
+   "battery_18650_holder_4x1.stl",
+   "battery_18650_holder_4x2.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit battery_18650_holder.scad to change sizes."
+ },
+ {
+  "name": "Solar panel Z-bracket",
+  "category": "solar-battery",
+  "tags": "solar panel mount bracket z-bracket frame",
+  "notes": "ASA/PETG, 100% infill, outdoors.",
+  "scad": "solar_panel_bracket.scad",
+  "stl": [
+   "solar_bracket_35mm.stl",
+   "solar_bracket_40mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit solar_panel_bracket.scad to change sizes."
+ },
+ {
+  "name": "ESP32 / LoRa board case (DevKit, Heltec, TTGO, Wemos)",
+  "category": "electronics-enclosure",
+  "tags": "esp32 devkit heltec v3 ttgo lora32 wemos d1 mini case enclosure",
+  "notes": "PLA/PETG. Board sizes are typical; measure yours. Snap lid.",
+  "scad": "esp32_case.scad",
+  "stl": [
+   "esp32_devkit_30pin_case.stl",
+   "esp32_devkit_38pin_case.stl",
+   "heltec_v3_case_sma.stl",
+   "ttgo_lora32_case_sma.stl",
+   "wemos_d1_mini_case.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit esp32_case.scad to change sizes."
  }
 ]

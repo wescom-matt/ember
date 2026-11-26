@@ -84,7 +84,7 @@ On the P1, with the USB plugged in (it appears as something like `/media/matt/US
 
 ```bash
 cd ~/ember
-./coldboot.sh cache  /media/matt/USB/coldboot-cache     # about 18 GB, 20-40 minutes
+./coldboot.sh cache  /media/matt/USB/coldboot-cache     # about 19 GB, 20-40 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups      # a few MB, do this often
 ```
 

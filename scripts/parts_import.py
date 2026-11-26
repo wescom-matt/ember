@@ -5,9 +5,10 @@ Run on the P1 from ~/ember:
   .venv/bin/python scripts/parts_import.py add-file FILE [FILE...] --name N --category C --license L \
         [--source URL] [--author A] [--tags "a b"] [--notes "print notes"]
   .venv/bin/python scripts/parts_import.py add-url URL --name N --category C --license L [...]
-  .venv/bin/python scripts/parts_import.py seed [--max-gb 3] [--only github|ifixit|scad]
+  .venv/bin/python scripts/parts_import.py seed [--max-gb 3] [--only github|ifixit|scad]   (cap = whole library)
   .venv/bin/python scripts/parts_import.py list [QUERY]
   .venv/bin/python scripts/parts_import.py stats
+  .venv/bin/python scripts/parts_import.py remove PART_ID
 
 License is required (CC0, CC-BY*, GPL, MIT, BSD, Public-Domain ...). Items without one are refused.
 """
@@ -15,6 +16,7 @@ License is required (CC0, CC-BY*, GPL, MIT, BSD, Public-Domain ...). Items witho
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import tempfile
@@ -80,6 +82,7 @@ def cmd_add_url(args: argparse.Namespace, data_dir: Path) -> None:
 class Budget:
     def __init__(self, max_bytes: int) -> None:
         self.left = max_bytes
+        self.full = False
 
     def take(self, n: int) -> bool:
         if n > self.left:
@@ -88,59 +91,149 @@ class Budget:
         return True
 
 
-def seed_github(conn: Any, data_dir: Path, src: dict[str, Any], budget: Budget) -> int:
+LICENSE_WORDS = {
+    "MIT": ("permission is hereby granted",),
+    "GPL": ("gnu general public license",),
+    "LGPL": ("lesser general public license", "gnu general public license"),
+    "AGPL": ("affero general public license",),
+    "CC": ("creative commons", "attribution"),
+    "CC0": ("cc0", "creative commons zero", "public domain"),
+    "Public-Domain": ("unlicense", "public domain"),
+    "BSD": ("redistribution and use",),
+    "0BSD": ("permission to use, copy, modify",),
+    "ISC": ("permission to use, copy, modify",),
+    "Apache": ("apache license",),
+    "MPL": ("mozilla public license",),
+    "CERN": ("cern open hardware",),
+}
+MAX_REPO_BYTES = 200 * 1024 * 1024  # skip oversized repos
+MODEL_PREFERRED = (".stl", ".3mf", ".step", ".stp")
+
+
+def license_text_matches(lic: str, text: str) -> bool:
+    """The repo's own LICENSE file must agree with the recorded SPDX id."""
+    low = text.lower()
+    for key in sorted(LICENSE_WORDS, key=len, reverse=True):
+        if lic.upper().startswith(key.upper()):
+            return any(w in low for w in LICENSE_WORDS[key])
+    return False
+
+
+def repo_license(src: dict[str, Any]) -> str:
+    lic = str(src.get("license") or "")
+    if not lic:  # fall back to GitHub's own detection (rate-limited API)
+        info = get_json(f"https://api.github.com/repos/{src['repo']}")
+        lic = ((info.get("license") or {}).get("spdx_id") or "").strip()
+    return SPDX_FIX.get(lic, lic)
+
+
+LICENSE_NAMES = ("license", "licence", "copying")
+
+
+def _is_license(path: str) -> bool:
+    return path.rsplit("/", 1)[-1].lower().startswith(LICENSE_NAMES)
+
+
+def fetch_repo(src: dict[str, Any], tmp: Path) -> tuple[str, dict[str, list[Path]]]:
+    """Download the repo tarball once; return (license text to check, {group: [model files]}).
+
+    Conservative license rules: several root license files (e.g. MIT code + CC case) need an explicit
+    'license_file' in the seed entry, else the text returned is '' and the repo is skipped. Model files
+    in a sub-folder that has its own license file are left out (they may be under other terms)."""
+    import tarfile  # noqa: PLC0415
+
+    tar_path = tmp / "repo.tgz"
+    tar_path.write_bytes(get(f"https://codeload.github.com/{src['repo']}/tar.gz/{src['ref']}", MAX_REPO_BYTES))
+    include = src.get("include") or [""]
+    exclude = [x.lower() for x in src.get("exclude") or []]
+    exts = MODEL_PREFERRED + ((".scad",) if src.get("scad") else ())
+    depth = int(src.get("group_depth", 0))
+    groups: dict[str, list[Path]] = {}
+    root_lic: dict[str, str] = {}
+    sub_lic_dirs: list[str] = []
+    with tarfile.open(tar_path, "r:gz") as tar:
+        members = [m for m in tar.getmembers() if m.isfile() and "/" in m.name]
+        for m in members:
+            path = m.name.split("/", 1)[1]
+            if _is_license(path) and m.size < 300_000:
+                if "/" in path:
+                    sub_lic_dirs.append(path.rsplit("/", 1)[0] + "/")
+                else:
+                    fh = tar.extractfile(m)
+                    root_lic[path] = fh.read().decode("utf-8", "replace") if fh else ""
+        for m in members:
+            path = m.name.split("/", 1)[1]
+            low = path.lower()
+            if m.size <= 0 or m.size > parts.MAX_FILE_BYTES or not low.endswith(exts):
+                continue
+            if any(x in low for x in exclude) or not any(path.startswith(p) for p in include):
+                continue
+            if any(path.startswith(d) for d in sub_lic_dirs):
+                continue
+            fh = tar.extractfile(m)
+            if fh is None:
+                continue
+            key = "/".join(path.split("/")[:depth]) if depth else ""
+            dest = tmp / "f" / str(len(groups)) / parts.safe_name(path.replace("/", "_")[-120:])
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(fh.read())
+            groups.setdefault(key, []).append(dest)
+    tar_path.unlink()
+    if src.get("license_file"):
+        text = root_lic.get(str(src["license_file"]), "")
+    else:
+        text = next(iter(root_lic.values())) if len(root_lic) == 1 else ""
+    return text, groups
+
+
+def seed_github(conn: Any, data_dir: Path, src: dict[str, Any], budget: Budget, seen: set[str]) -> int:
     repo, ref = src["repo"], src["ref"]
-    info = get_json(f"https://api.github.com/repos/{repo}")
-    spdx = ((info.get("license") or {}).get("spdx_id") or "").strip()
-    lic = SPDX_FIX.get(spdx, spdx)
+    lic = repo_license(src)
     try:
         parts.check_license(lic)
     except parts.PartsError:
-        print(f"  skip {repo}: license '{spdx or 'none'}' not accepted")
+        print(f"  skip {repo}: license '{lic or 'none'}' not accepted")
         return 0
-    tree = get_json(f"https://api.github.com/repos/{repo}/git/trees/{ref}?recursive=1")["tree"]
-    groups: dict[str, list[dict[str, Any]]] = {}
-    for item in tree:
-        path = item["path"]
-        if item["type"] != "blob" or not path.lower().endswith(parts.MODEL_EXT):
-            continue
-        if not any(path.startswith(p) for p in src["include"]):
-            continue
-        depth = int(src.get("group_depth", 0))
-        key = "/".join(path.split("/")[:depth]) if depth else ""
-        groups.setdefault(key, []).append(item)
     added = 0
-    author = repo.split("/")[0]
-    for key, items in sorted(groups.items()):
-        name = f"{info.get('name', repo)}{' - ' + key.replace('_', ' ') if key else ''}"[:120]
-        url = f"https://github.com/{repo}/tree/{ref}/{urllib.parse.quote(key)}"
-        if conn.execute("SELECT 1 FROM parts WHERE source_url = ? AND name = ?", (url, name)).fetchone():
-            continue
-        size = sum(int(i.get("size", 0)) for i in items[:100])
-        if not budget.take(size):
-            print(f"  stop: size cap reached at {name}")
-            return added
-        with tempfile.TemporaryDirectory() as tmp:
-            files = []
-            for i in items[:100]:
-                raw = get(f"https://raw.githubusercontent.com/{repo}/{ref}/{urllib.parse.quote(i['path'])}")
-                dest = Path(tmp) / parts.safe_name(i["path"].replace("/", "_")[-120:])
-                dest.write_bytes(raw)
-                files.append(dest)
+    with tempfile.TemporaryDirectory() as tmpd:
+        tmp = Path(tmpd)
+        lic_text, groups = fetch_repo(src, tmp)
+        if not license_text_matches(lic, lic_text):
+            print(f"  skip {repo}: no single LICENSE file matching {lic} (set license_file after checking by hand)")
+            return 0
+        for key, files in sorted(groups.items()):
+            label = f"{src.get('name') or repo.split('/')[1]}{' - ' + key.replace('/', ' - ') if key else ''}"
+            name = parts.safe_name(label.replace("_", " ")[:120])
+            url = f"https://github.com/{repo}/tree/{ref}/{urllib.parse.quote(key)}".rstrip("/")
+            if conn.execute("SELECT 1 FROM parts WHERE source_url = ? AND name = ?", (url, name)).fetchone():
+                continue
+            fresh = []
+            for f in files[: int(src.get("max_files", 60))]:
+                digest = hashlib.sha256(f.read_bytes()).hexdigest()
+                if digest not in seen:  # de-duplicate identical files across sources
+                    seen.add(digest)
+                    fresh.append(f)
+            size = sum(f.stat().st_size for f in fresh)
+            if not fresh:
+                continue
+            if not budget.take(size):
+                print(f"  stop: size cap reached at {name}")
+                budget.full = True
+                return added
             meta = {
                 "name": name,
                 "category": src["category"],
                 "license": lic,
                 "source_url": url,
-                "author": author,
+                "author": src.get("author") or repo.split("/")[0],
                 "tags": src.get("tags", ""),
                 "notes": src.get("notes", ""),
-                "description": (info.get("description") or "")[:500],
+                "description": str(src.get("description") or "")[:500],
             }
             try:
-                parts.add_part(conn, data_dir, meta, files)
+                parts.add_part(conn, data_dir, meta, fresh)
                 added += 1
-                print(f"  + {name} ({len(files)} files, {size / 1e6:.1f} MB, {lic})")
+                print(f"  + [{src['category']}] {name} ({len(fresh)} files, {size / 1e6:.1f} MB, {lic})")
             except parts.PartsError as exc:
                 print(f"  skip {name}: {exc}")
     return added
@@ -196,11 +289,14 @@ def seed_scad(conn: Any, data_dir: Path, cfg: dict[str, Any]) -> int:
     for item in manifest:
         files = [folder / "stl" / f for f in item["stl"]] + [folder / item["scad"]]
         files = [f for f in files if f.is_file()]
+        src_url = f"ember:coldboot/parts-scad/{item['scad']}"
+        if conn.execute("SELECT 1 FROM parts WHERE source_url = ? AND name = ?", (src_url, item["name"])).fetchone():
+            continue  # already in the library
         meta = {
             **item,
             "license": cfg["license"],
             "author": cfg["author"],
-            "source_url": f"ember:coldboot/parts-scad/{item['scad']}",
+            "source_url": src_url,
         }
         try:
             parts.add_part(conn, data_dir, meta, files)
@@ -214,14 +310,18 @@ def seed_scad(conn: Any, data_dir: Path, cfg: dict[str, Any]) -> int:
 def cmd_seed(args: argparse.Namespace, data_dir: Path) -> None:
     cfg = json.loads((REPO / "coldboot/parts-seed.json").read_text())
     conn = parts.open_db(data_dir)
-    budget = Budget(int(args.max_gb * 1e9))
+    used = int(parts.stats(conn, data_dir)["bytes"])
+    budget = Budget(max(0, int(args.max_gb * 1e9) - used))  # the cap is for the whole library
+    seen = parts.known_hashes(conn)
     if args.only in ("", "scad"):
         seed_scad(conn, data_dir, cfg["scad"])
     if args.only in ("", "github"):
-        for src in cfg["github"]:
+        for src in cfg["github"]:  # list order = priority
+            if budget.full:
+                break
             try:
-                seed_github(conn, data_dir, src, budget)
-            except (OSError, ValueError, KeyError) as exc:
+                seed_github(conn, data_dir, src, budget, seen)
+            except (OSError, ValueError, KeyError, parts.PartsError) as exc:
                 print(f"  ! {src['repo']}: {exc}")
     if args.only in ("", "ifixit"):
         try:
@@ -253,6 +353,8 @@ def main() -> int:
     lp = sub.add_parser("list")
     lp.add_argument("query", nargs="?", default="")
     sub.add_parser("stats")
+    rp = sub.add_parser("remove")
+    rp.add_argument("part_id", type=int)
     args = ap.parse_args()
     data_dir = load_settings().data_dir
     try:
@@ -265,6 +367,9 @@ def main() -> int:
         elif args.cmd == "list":
             for h in parts.search(parts.open_db(data_dir), args.query, 50):
                 print(f"{h['kind']:5} #{h['id']:<4} {h.get('name') or h.get('title')}  [{h['license']}]")
+        elif args.cmd == "remove":
+            ok = parts.remove_part(parts.open_db(data_dir), data_dir, args.part_id)
+            print("removed" if ok else "no such part")
         else:
             print(json.dumps(parts.stats(parts.open_db(data_dir), data_dir), indent=1))
     except (parts.PartsError, ValueError, OSError) as exc:

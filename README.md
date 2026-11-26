@@ -209,13 +209,14 @@ Build host setup: `bash ~/ember/coldboot/buildhost/install-buildhost.sh --build`
 ### Parts library
 - Stored on the P1 in `~/.local/share/ember/parts/` (`library.db` plus `files/<id>/`). Each part has a name, category, source URL, license, author, tags and printer notes. Pick **Parts** in the knowledge-base menu or use Workshop → Parts. **Slice** sends a part to the build host and slices it for the CC2.
 - **Only openly licensed models** (CC, GPL, MIT, public domain). Anything without a clear license is refused.
-- **Seed** (`scripts/parts_import.py seed --max-gb 3`): 64 parts (193 MB) and 214 iFixit guides.
+- **Seed** (`scripts/parts_import.py seed --max-gb 3`; the cap is for the whole library): 200 parts (about 0.97 GB) and 214 iFixit guides. By category: antenna 30, plumbing 16, radio mounts 8, ESP32/LoRa cases 32, cable management 8, solar/battery 16, tools 17, household 23, CoreXY 49, off-grid 1.
+  - About 125 GitHub repos picked by category (antenna, plumbing, radio mounts, ESP32 cases first, then cable, solar/battery, tools, household). Licenses: GPL, MIT, CC0, CC-BY(-SA/-NC), BSD, Apache, CERN-OHL, MPL. Examples: Yagi, Moxon and QFH antenna parts, SMA/BNC mounts, magnetic-loop tuners, pipe and hose fittings, drip and drain valves, an IC-7300 go-kit, TTGO/T-Beam/Heltec/Meshtastic cases, 18650 holders, Gridfinity, clamps and jigs.
   - Voron 2.4, Voron 0 and Voron Tap printed parts (GPL-3.0): common CoreXY parts.
-  - Enclosures and mounts from GitHub with verified MIT/GPL licenses (ESP32 display enclosure, antenna and dipole mounts, hose holder, remote).
-  - 9 Ember-made OpenSCAD designs (CC0, 24 STLs): knob, hose barb, cable clip, L bracket, project box, SMA antenna mount, belt clip, drill guide, radio stand.
+  - 23 Ember-made OpenSCAD designs (CC0, 55 STLs): knob, hose barb, cable clip, L bracket, project box, SMA/SO-239/BNC mounts, belt clip, drill guide, radio stand, dipole center (SO-239), end insulator, coax strain relief, mast clamp, Yagi/J-pole element holder, HT holder (UV-5R/BF-F8+, UV-9R Plus, AT-D868UV), keyhole mic hanger, rig tilt wedge, 1/4" drip fittings and stake, 18650 holder, solar Z-bracket, ESP32/Heltec/TTGO/Wemos cases. Radio and board sizes are typical: measure yours.
+  - **License rules:** the license recorded in `coldboot/parts-seed.json` must match the repo's own LICENSE file. Repos with several root licenses (e.g. MIT code + CC case) need a hand-checked `license_file`. Sub-folders with their own license are left out. Identical files are stored once (SHA-256). `parts_import.py remove ID` deletes a part.
   - iFixit guides (CC BY-NC-SA 3.0, attribution kept) for generators, faucets, water heaters, radios, solar, bicycles, tools and more.
 - **Add your own** (on the P1, in `~/ember`): `.venv/bin/python scripts/parts_import.py add-file FILE... --name NAME --category household --license CC-BY-4.0 --source URL`, or `add-url URL --name ... --category ... --license ...`. `list QUERY` and `stats` show what's there. For Printables or Thingiverse, download the file yourself and copy the license shown on the page; Ember doesn't scrape those sites.
-- **Grow it:** add GitHub repos to `coldboot/parts-seed.json`, add iFixit search words, or raise `--max-gb`.
+- **Grow it:** add GitHub repos to `coldboot/parts-seed.json` (with `license`), add iFixit search words, or raise `--max-gb`. Thingiverse's API needs a registered app token and Printables has no public API, so those are hand-import only.
 
 ### Fix and install mode
 In a chat with Commands on, ask Ember to fix something. It reads logs (`journalctl -u NAME`, read-only, automatic), proposes file edits with `write_file` (always a Confirm card with a diff; the old file is kept as `*.bak-ember`), restarts services and installs packages (always confirmed). Sudo commands only work where `sudo -n` is allowed; otherwise Ember writes the steps for you.
@@ -304,12 +305,12 @@ ColdBoot replaces `~/agent-stack-backup/rebuild.sh`. That kit still works, and `
 | `ember-wheels/` | Ember's hashed wheels | ~0.01 GB |
 | `buildtools/` | CHIRP (pinned) and its wheels, PlatformIO/esptool wheels, PlatformIO ESP32 packages, arduino-cli, OrcaSlicer and ElegooSlicer AppImages and Windows zips, CC2 profiles | ~5.4 GB |
 | `arduino/` | Arduino ESP32 core (only with `--with-arduino-core`) | ~9 GB |
-| `parts/` | Parts library (capped by `--parts-gb`, default 3) | ~0.2 GB now |
+| `parts/` | Parts library (capped by `--parts-gb`, default 3) | ~1 GB now |
 | `radio-kb/` | Radio reference library | ~7 MB |
 | `ember.bundle` | Full git copy of this repo | <1 MB |
 | `COLDBOOT.md`, `SHA256SUMS` | Guide and checksums | |
 
-**Total about 18 GB** (27 GB with the Arduino core). Use a 32 GB USB disk, or 64 GB with the Arduino core. Then rebuild offline with `./coldboot.sh install --cache /media/matt/USB/coldboot-cache`.
+**Total about 19 GB** (28 GB with the Arduino core). Use a 32 GB USB disk, or 64 GB with the Arduino core. Then rebuild offline with `./coldboot.sh install --cache /media/matt/USB/coldboot-cache`.
 
 ## 12. Where things live
 

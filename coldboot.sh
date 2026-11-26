@@ -907,7 +907,7 @@ cmd_cache() {
   [[ -n "$dir" ]] || die "usage: coldboot cache DIR [--skip-models] [--skip-buildtools] [--only-buildtools]"
   install -d "$dir"
   dir="$(cd "$dir" && pwd)"
-  info "free space at $dir: $(df -h --output=avail "$dir" | tail -n 1 | tr -d ' ') (full cache needs about 18 GB; +9 GB with --with-arduino-core)"
+  info "free space at $dir: $(df -h --output=avail "$dir" | tail -n 1 | tr -d ' ') (full cache needs about 19 GB; +9 GB with --with-arduino-core)"
   if [[ "$only_tools" == "1" ]]; then cache_buildtools "$dir"; cache_sums "$dir"; return 0; fi
   say "Pinned binaries (Ollama, Goose, uv, Python)"
   local name

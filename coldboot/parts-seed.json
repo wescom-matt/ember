@@ -1,20 +1,1754 @@
 {
-  "_about": "Seed list for Ember's offline parts library. Only openly licensed sources; the license is re-read from GitHub at import time and anything without a license is skipped. Printables/Thingiverse are not scraped (their terms forbid it): download from them by hand and use 'parts_import.py add-file' with the license shown on the page.",
-  "github": [
-    {"repo": "VoronDesign/Voron-2", "ref": "Voron2.4", "include": ["STLs/Tools", "STLs/Spool_Management", "STLs/Test_Prints", "STLs/Z_Endstop", "STLs/Exhaust_Filter", "STLs/Electronics_Bay", "STLs/Panel_Mounting", "STLs/Gantry", "STLs/Z_Drive", "STLs/Z_Idlers"], "group_depth": 2, "category": "corexy", "tags": "voron corexy printer spare parts", "notes": "Voron 2.4 printed parts (CoreXY). ABS/ASA recommended by Voron; 0.4 nozzle, 0.2 mm layers, 40% infill, 4 walls."},
-    {"repo": "VoronDesign/Voron-Tap", "ref": "main", "include": ["OptoTap/STLs", "STLs"], "group_depth": 1, "category": "corexy", "tags": "voron tap probe corexy toolhead", "notes": "Voron Tap nozzle probe parts."},
-    {"repo": "VoronDesign/Voron-0", "ref": "Voron0.2r1", "include": ["STLs"], "group_depth": 2, "category": "corexy", "tags": "voron v0 corexy small printer parts", "notes": "Voron 0.2 printed parts (small CoreXY)."},
-    {"repo": "iinde/slr-remote", "ref": "main", "include": ["case"], "group_depth": 0, "category": "electronics-enclosure", "tags": "heltec lora case enclosure remote", "notes": "Handheld case for a Heltec LoRa board project."},
-    {"repo": "kuaner/esp32-p4-7b-enclosure", "ref": "main", "include": ["output/current"], "group_depth": 0, "category": "electronics-enclosure", "tags": "esp32 waveshare display enclosure", "notes": "Enclosure for the Waveshare ESP32-P4 7in display board."},
-    {"repo": "JimKnopfIoT/HackRF-Display-mount", "ref": "master", "include": [""], "group_depth": 0, "category": "antenna-radio", "tags": "hackrf sdr antenna mount case radio", "notes": "HackRF case and antenna holder."},
-    {"repo": "theonlyakhil/V-Dipole-Antenna-Mount", "ref": "main", "include": [""], "group_depth": 0, "category": "antenna-radio", "tags": "v dipole antenna mount weather satellite noaa", "notes": "V-dipole antenna holder (137 MHz weather satellites)."},
-    {"repo": "arkieguy/Helium-Hotspot-Holster-and-Antenna-Mount", "ref": "master", "include": [""], "group_depth": 0, "category": "antenna-radio", "tags": "lora antenna mount holster hotspot", "notes": "Wall holster with antenna mount for a LoRa hotspot."},
-    {"repo": "JimKnopfIoT/Flexhose-Holder-Omni-1", "ref": "main", "include": [""], "group_depth": 0, "category": "household", "tags": "hose holder clamp", "notes": "Flexible hose holder."}
-  ],
-  "ifixit": {
-    "license": "CC-BY-NC-SA-3.0",
-    "per_query": 12,
-    "queries": ["3D printer", "generator", "chainsaw", "lawn mower", "water heater", "faucet", "toilet", "radio", "flashlight", "solar", "bicycle", "power tool", "refrigerator", "washing machine", "furnace", "car battery", "headlamp", "multimeter"]
+ "_about": "Seed list for Ember's offline parts library. List order is priority (Matt's categories first). Only openly licensed GitHub repos: the SPDX license recorded here was read from GitHub when the repo was chosen, and at import time the repo's own LICENSE file must agree or the repo is skipped. Files are de-duplicated by SHA-256 and the --max-gb cap covers the whole library. Printables/Thingiverse are not scraped (Thingiverse's API needs a registered app token; Printables has no public API): download from them by hand and use 'parts_import.py add-file' with the license shown on the page.",
+ "github": [
+  {
+   "repo": "EA7RCT/Yagi-Uda",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "yagi antenna element holder boom",
+   "description": "Piezas impresas en 3D para montar una antena Yagi-Uda.",
+   "max_files": 60
   },
-  "scad": {"dir": "coldboot/parts-scad", "license": "CC0-1.0", "author": "Ember (generated with OpenSCAD)"}
+  {
+   "repo": "shreaypatel/446MHz-Tape-Measure-Yagi",
+   "ref": "main",
+   "license": "CERN-OHL-P-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "yagi tape measure 70cm 446 antenna fox hunt",
+   "description": "A fully 3D-printable, 3-element tape measure Yagi antenna for the 70cm (446 MHz) amateur radio band.",
+   "max_files": 60
+  },
+  {
+   "repo": "CorradoCorrado/FLTSATCOM-Yagi-Uda",
+   "ref": "main",
+   "license": "CERN-OHL-P-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "yagi uhf satellite antenna element holder",
+   "description": "A 3D-printable 255 MHz antenna for receiving FLTSATCOM-7 UHF traffic ",
+   "max_files": 60
+  },
+  {
+   "repo": "smurphboy/2m-70cms-Moxon-antenna",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "moxon 2m 70cm antenna spreader center",
+   "description": "2m / 70cms Moxon antenna",
+   "max_files": 60
+  },
+  {
+   "repo": "MartinDavidWaller/Tall-QFH",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "qfh quadrifilar helix antenna weather satellite",
+   "description": "My take on the Tall QFH antenna",
+   "max_files": 60
+  },
+  {
+   "repo": "soniccidr/Tenticles-Array",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "dipole array krakensdr direction finding hub",
+   "description": "Release the Kraken. A 3D-printed pantograph antenna array for KrakenSDR direction finding: five plumb dipoles, one sliding hub, 44 MHz to 1.66 GHz.",
+   "max_files": 60
+  },
+  {
+   "repo": "sh123/magloop_controller",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "magnetic loop antenna capacitor tuner",
+   "description": "Arduino magnetic loop antenna controller and 3d printed high voltage sliding capacitor",
+   "max_files": 60
+  },
+  {
+   "repo": "jglandorf/alexLoopRemoteControl",
+   "ref": "main",
+   "license": "CERN-OHL-W-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "magnetic loop antenna tuner remote",
+   "description": "Remote infrared wireless tuning for the http://www.alexloop.com magnetic loop shortwave antenna.",
+   "max_files": 60
+  },
+  {
+   "repo": "sh123/variometer",
+   "ref": "master",
+   "license": "GPL-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "variometer variable inductor antenna tuner coil",
+   "description": "Variometer (variable inductor) OpenSCAD generator and related files",
+   "max_files": 60
+  },
+  {
+   "repo": "SudoTraceRoute/2.4GHz-Modular-Parabolic-Dish-Antenna",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "parabolic dish wifi antenna 2.4ghz",
+   "description": "3D-printed directional Wi-Fi antenna project with possibilities of various upgrades",
+   "max_files": 60
+  },
+  {
+   "repo": "cpgmoore/FDMdish",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "parabolic dish antenna openscad",
+   "description": "A 3D printable parabolic dish antenna, written in OpenSCAD, with examples rendered for immediate print.",
+   "max_files": 60
+  },
+  {
+   "repo": "janesmae/openscad-sma_knurled_nut_covers",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "sma connector nut cover knob",
+   "description": "SMA knurled nut covers",
+   "max_files": 60
+  },
+  {
+   "repo": "wojked/parametric-sma-rear-mount",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "sma bulkhead mount panel",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "DanielCasner/novena-peek-sma-mount",
+   "ref": "master",
+   "license": "BSD-2-Clause",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "sma mounting plate bulkhead",
+   "description": "3D CAD / printable files for an internal SMA mounting plate to go inside the Novena open source laptop and mount 1 or more SMA antenna sockets.",
+   "max_files": 60
+  },
+  {
+   "repo": "jamesarich/p1-car-mount",
+   "ref": "main",
+   "license": "CC-BY-SA-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "magnetic car roof antenna mount n-type meshtastic",
+   "description": "One-piece magnetic car-roof mount for the Seeed SenseCAP Solar Node P1 (N-type and stock antenna), OpenSCAD",
+   "max_files": 60
+  },
+  {
+   "repo": "k-meeks/meshtastic-solar-station",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "meshtastic antenna mast solar station lora",
+   "description": "An AI assisted meshtastic station and antenna design with solar power",
+   "max_files": 60
+  },
+  {
+   "repo": "bajraan/3DP-PipeReinforcer-ZTE-MC889APRO-71ATR",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "antenna pipe mast mount clamp",
+   "description": "Printable 3D model to reinforce ZTE antenna mounting.",
+   "max_files": 60
+  },
+  {
+   "repo": "drgerg/BitScopeMicroMount",
+   "ref": "master",
+   "license": "CC-BY-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "bnc mount frame oscilloscope",
+   "description": "A 3D-printed designer frame to hold the Bitscope Micro with Hammerhead BNC interface.",
+   "max_files": 60
+  },
+  {
+   "repo": "playfultechnology/openscad-pipework",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "pipe fittings flanges valves elbow tee",
+   "description": "Pipe fittings, flanges, valves etc.",
+   "max_files": 60
+  },
+  {
+   "repo": "ostat/vacuum-hose-adapter-openscad",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "hose adapter reducer vacuum dust collection",
+   "description": "OpenScad vacuum hose adapter generator",
+   "max_files": 60
+  },
+  {
+   "repo": "Tuplanolla/hose-clamp",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "hose clamp",
+   "description": "This OpenSCAD program creates a clamp for attaching a brake hose to the fork of a bicycle.",
+   "max_files": 60
+  },
+  {
+   "repo": "owenjustin/SCAD-pipe-clamp-pads",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "pipe clamp pad tpu",
+   "description": "3D Printable Pipe Clamp Pad SCAD Models (w/ STLs) TPU",
+   "max_files": 60
+  },
+  {
+   "repo": "korsicheg/Pipe-Adapter-w-Mounting-Box",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "pipe adapter reducer 60mm 100mm",
+   "description": "Pipe Adapter - 60mm to 100mm with Mounting Box",
+   "max_files": 60
+  },
+  {
+   "repo": "EndoliteMatrix/Radon-Adapter-5inchto4inch",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "pvc pipe adapter reducer 5 inch 4 inch",
+   "description": "OpenSCAD model of a 5\" male insert, to a 4\" female fitting for PVC. Used with a solid radon lid.",
+   "max_files": 60
+  },
+  {
+   "repo": "bfarago/3D_DrainPipe",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "drain pipe dishwasher sink adapter",
+   "description": "Connect dishwasher to sink, OpenSCAD, 3D printing.",
+   "max_files": 60
+  },
+  {
+   "repo": "Nartlof/PipeToDrain",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "drain siphon pipe adapter",
+   "description": "This is an adaptor to transfor an open end of a pipe into a siphoned drain",
+   "max_files": 60
+  },
+  {
+   "repo": "Nartlof/Yvalve",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "y valve diverter water drain",
+   "description": "A valve to redirect water from a drain to two possible exits",
+   "max_files": 60
+  },
+  {
+   "repo": "lyrixx/pool-waterfall",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "union fitting pool return jet threaded",
+   "description": "Pool fountain — union fitting on a return jet",
+   "max_files": 60
+  },
+  {
+   "repo": "rolinge/M12GearboxOilFitting",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "m12 threaded oil fitting plug",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "themakergarage/aztekAirbrushAdapter",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "npt 1/4 fitting adapter air",
+   "description": "Adapter for a Testos Aztek Airbrush to a 1/4 NPT fitting",
+   "max_files": 60
+  },
+  {
+   "repo": "scanner/shopvac-to-dewalt-adapter",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "hose adapter shop vac",
+   "description": "An adapter to fit the hose from my Shop-Vac 9520262 5-Gallon 4.5-Peak HP Hang Up Wall Mounted Wet/Dry Vacuum to the dust adapter on my DeWalt DW705 12\" mitre saw.",
+   "max_files": 60
+  },
+  {
+   "repo": "msillano/sonoff_watering",
+   "ref": "master",
+   "license": "LGPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "irrigation timer watering valve enclosure",
+   "description": "Complete DIY project of an irrigation timer, better than many commercial timers",
+   "max_files": 60
+  },
+  {
+   "repo": "JimKnopfIoT/Flexhose-Holder-Omni-1",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "plumbing",
+   "tags": "hose holder clamp",
+   "description": "Holder for flexible hose, mountable on ComMaker Omni 1 base plate or honeycomb. Created with Rhino 8.",
+   "max_files": 60
+  },
+  {
+   "repo": "gtilford/IC7300GoKit",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "radio-mounts",
+   "tags": "ic-7300 icom go-kit mount stand",
+   "description": "The 3D design and print files for my IC-7300 based go-kit",
+   "max_files": 60
+  },
+  {
+   "repo": "alustenberg/ham-prints",
+   "ref": "main",
+   "license": "BSD-3-Clause",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "radio-mounts",
+   "tags": "ham radio accessories holder mount",
+   "description": "3d printed bits for amateur radio",
+   "max_files": 60
+  },
+  {
+   "repo": "tskauli/QCX_enclosure_LA4ZCA",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "radio-mounts",
+   "tags": "qcx transceiver enclosure paddle cw",
+   "description": "A compact enclosure with integrated paddles for the QCX amateur radio transceiver kit",
+   "max_files": 60
+  },
+  {
+   "repo": "digiampietro/FRG9600-SmallKnob-v2",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "radio-mounts",
+   "tags": "radio knob yaesu replacement",
+   "description": "Knob for the Yaesu FRG-9600 VHF/UHF Radio",
+   "max_files": 60
+  },
+  {
+   "repo": "sh123/esp32_loradv",
+   "ref": "master",
+   "license": "GPL-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "radio-mounts",
+   "tags": "handheld transceiver case lora esp32 walkie",
+   "description": "ESP32 based Codec2/OPUS DV hobby UHF 3d printed handheld transceiver aka walkie-talkie",
+   "max_files": 60
+  },
+  {
+   "repo": "JimKnopfIoT/HackRF-Display-mount",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "radio-mounts",
+   "tags": "hackrf sdr mount display",
+   "description": "3D printable mount for HackRf and Wideband-Antenna.",
+   "max_files": 60
+  },
+  {
+   "repo": "digiampietro/enclosure-ttgo-lora32",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "ttgo lilygo lora32 case esp32",
+   "description": "Case for the \"LILYGO/TTGO Lora32 V2.1_1.6\" board",
+   "max_files": 60
+  },
+  {
+   "repo": "mofosyne/ttgo_tbeam_openscad_case",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "ttgo t-beam lora case meshtastic",
+   "description": "Openscad case for LIlyGo TTGO T-Beam boards",
+   "max_files": 60
+  },
+  {
+   "repo": "greygoo/LoRa-T3_case",
+   "ref": "main",
+   "license": "AGPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "lora t3 ttgo case esp32",
+   "description": "Simple Case for an ESP32 base LoRa T3 Module",
+   "max_files": 60
+  },
+  {
+   "repo": "Prokuon/MeshT1",
+   "ref": "main",
+   "license": "CC-BY-SA-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "heltec tracker meshtastic enclosure",
+   "description": "Enclosure for Heltec Tracker",
+   "max_files": 60
+  },
+  {
+   "repo": "glompos21/NomadShell",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "meshtastic waterproof enclosure lora node",
+   "description": "NomadShell: A Parametric, Waterproof Enclosure for Meshtastic Modules",
+   "max_files": 60
+  },
+  {
+   "repo": "MitchellPescud/LoRa-Fire-Alarm-Mesh-System",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "heltec lora enclosure esp32-s3",
+   "description": "Gateway-free LoRa mesh fire-alarm network on ESP32-S3 (Heltec V4.3): smoke and heat sensing, HMAC-authenticated managed flooding, node-to-node commands, battery backup. Firmware, tests, field results ",
+   "max_files": 60
+  },
+  {
+   "repo": "inokron-doo/OA-HWcomponents",
+   "ref": "main",
+   "license": "CERN-OHL-S-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "lora sensor node enclosure",
+   "description": "Open hardware for the SFS LoRa sensor network node (dual-role sensor/concentrator PCB, Gerbers, BOM, 3D-printable enclosure) for the SmartFeed Feed Monitoring System, developed by Inokron d.o.o. as pa",
+   "max_files": 60
+  },
+  {
+   "repo": "C-Maruf/gardennode-c6",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "solar sensor node enclosure esp32-c6 garden",
+   "description": "Solar-powered ESP32-C6 garden sensor node : KiCad PCB, 3D-printed enclosure, ESPHome firmware",
+   "max_files": 60
+  },
+  {
+   "repo": "cesariohomens/weatherstation",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "weather station esp32 enclosure",
+   "description": "Weather Station ESP32",
+   "max_files": 60
+  },
+  {
+   "repo": "pulikantitarun/astro-weather-india",
+   "ref": "main",
+   "license": "AGPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "weather station esp32 enclosure outdoor",
+   "description": "Affordable 3D-printable ESP32 weather station for astrophotography",
+   "max_files": 60
+  },
+  {
+   "repo": "jhfoo/stl-esp32",
+   "ref": "main",
+   "license": "BSD-2-Clause",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "esp32 devkit case",
+   "description": "STL files for ESP32 devices (mostly in openSCAD",
+   "max_files": 60
+  },
+  {
+   "repo": "yaleman/CO2SensorCase",
+   "ref": "main",
+   "license": "Public-Domain",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "wemos d1 mini sensor case co2",
+   "description": "MH-Z14A + Wemos D1 = Wifi CO2 sensor ",
+   "max_files": 60
+  },
+  {
+   "repo": "pinpox/wemos-d1-macropad",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "wemos d1 mini case",
+   "description": "A 6-key Macropad using a Wemos D1 mini ESP32 and a 3D-printed case",
+   "max_files": 60
+  },
+  {
+   "repo": "fschnee/turtly",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "wemos d1 mini s2 mini case small",
+   "description": "A tiny SlimeVR case for 804040 + Wemos D1 Mini OR S2 Mini+ BMI160",
+   "max_files": 60
+  },
+  {
+   "repo": "tomsci/feather-tft-case",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "adafruit feather esp32 case",
+   "description": "3D printed case for the Adafruit Feather TFT esp32 board",
+   "max_files": 60
+  },
+  {
+   "repo": "wetterfrosch/mf-uwbpro-case",
+   "ref": "main",
+   "license": "Apache-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "esp32 uwb makerfabs case",
+   "description": "a 3D-printable case for Makerfabs ESP32-UWB-Pro",
+   "max_files": 60
+  },
+  {
+   "repo": "vanovri/sensor-enclosure-cad",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "sensor enclosure parametric",
+   "description": "Hand-transcribed sketch to parametric OpenSCAD, watertight STL and a geometric referee, with a standalone 3D inspector",
+   "max_files": 60
+  },
+  {
+   "repo": "romkey/dfrobot-gas-case",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "gas sensor case vented",
+   "description": "Parametric OpenSCAD cases for DFRobot Gravity electrochemical gas sensors: vented four-up active enclosure + nine-sensor storage tray, with STL/3MF outputs",
+   "max_files": 60
+  },
+  {
+   "repo": "CieveMe/pico-w-leak-sensor-enclosure",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "leak sensor enclosure pico",
+   "description": "Parametric Pico W enclosure prototype with STEP/STL/GLB exports, digital geometry checks, and browser review.",
+   "max_files": 60
+  },
+  {
+   "repo": "ra3vld/esp32-cases",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "esp32 display case crowpanel cyd",
+   "description": "Printable desktop cases for CrowPanel 2.1 and ESP32-3248S035C: CAD sources, STEP/STL and interactive 3D previews",
+   "max_files": 60
+  },
+  {
+   "repo": "jeffmhopkins/esp32-s3-touch-amoled-1.8-case",
+   "ref": "main",
+   "license": "CC-BY-SA-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "esp32-s3 amoled case",
+   "description": "CAD files and STLs for the esp32-s3-touch-amoled-1.8-case",
+   "max_files": 60
+  },
+  {
+   "repo": "zredlined/esp32-race-logger-enclosure",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "feather esp32-s3 enclosure logger gps",
+   "description": "3D-printed enclosure for a Feather ESP32-S3 race data logger: generated Onshape CAD, STLs, build guide, BOM",
+   "max_files": 60
+  },
+  {
+   "repo": "netzbasteln/MLX90640-Thermocam",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "esp32 thermal camera case",
+   "description": "A simple Thermal camera using the MLX90640 Sensor, an ESP32, a ILI9341 TFT, a 18650 battery in a 3D printed case.",
+   "max_files": 60
+  },
+  {
+   "repo": "astromikemerri/OpenSCAD-Enclosure",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "project box enclosure parametric",
+   "description": "OpenSCAD Script for creating a box for a electronics project for 3D printing",
+   "max_files": 60
+  },
+  {
+   "repo": "0xPIT/AlClosure",
+   "ref": "master",
+   "license": "CC-BY-SA-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "parametric device enclosure",
+   "description": "Beautiful Parametric Professional Aluminum Device Enclosure",
+   "max_files": 60
+  },
+  {
+   "repo": "bruestel/flowtick-meter",
+   "ref": "main",
+   "license": "Apache-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "water meter reader esp32 enclosure",
+   "description": "Battery-free optical reader for water meters with a scanning disc: ESP32-C6 + TCRT5000L, MQTT / Home Assistant, 3D-printed cases",
+   "max_files": 60
+  },
+  {
+   "repo": "Edge-Neuron/Thermal-Camera-Casing",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "thermal sensor enclosure",
+   "description": "Custom 3D-printed enclosure for a thermal imaging sensor (e.g., MLX90641) — includes SolidWorks design files, STL models, and Cura setup for accurate, ventilated mounting.",
+   "max_files": 60
+  },
+  {
+   "repo": "hardwario/twr-enclosures",
+   "ref": "main",
+   "license": "CC-BY-SA-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "iot module enclosures openscad",
+   "description": "3D-printable enclosures for HARDWARIO TOWER modules — OpenSCAD sources and STL models.",
+   "max_files": 60
+  },
+  {
+   "repo": "iinde/slr-remote",
+   "ref": "main",
+   "include": [
+    "case/final"
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "heltec lora case enclosure remote",
+   "notes": "SLR Remote case by Aaron Phull, adapted from 'Meshtastic Heltec V4 Miniworks case' by Chem_Kid (Thingiverse 7367243). CC BY-NC 4.0. Heltec V4 LoRa handheld case.",
+   "license": "CC-BY-NC-4.0",
+   "license_file": "LICENSE-CASE.md"
+  },
+  {
+   "repo": "kuaner/esp32-p4-7b-enclosure",
+   "ref": "main",
+   "include": [
+    "output/current"
+   ],
+   "group_depth": 0,
+   "category": "electronics-enclosure",
+   "tags": "esp32 waveshare display enclosure",
+   "notes": "Enclosure for the Waveshare ESP32-P4 7in display board.",
+   "license": "MIT"
+  },
+  {
+   "repo": "theonlyakhil/V-Dipole-Antenna-Mount",
+   "ref": "main",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "v dipole antenna mount weather satellite noaa",
+   "notes": "V-dipole antenna holder (137 MHz weather satellites).",
+   "license": "GPL-3.0"
+  },
+  {
+   "repo": "arkieguy/Helium-Hotspot-Holster-and-Antenna-Mount",
+   "ref": "master",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "antenna-radio",
+   "tags": "lora antenna mount holster hotspot",
+   "notes": "Wall holster with antenna mount for a LoRa hotspot.",
+   "license": "MIT"
+  },
+  {
+   "repo": "VoronDesign/Voron-2",
+   "ref": "Voron2.4",
+   "include": [
+    "STLs/Tools",
+    "STLs/Spool_Management",
+    "STLs/Test_Prints",
+    "STLs/Z_Endstop",
+    "STLs/Exhaust_Filter",
+    "STLs/Electronics_Bay",
+    "STLs/Panel_Mounting",
+    "STLs/Gantry",
+    "STLs/Z_Drive",
+    "STLs/Z_Idlers"
+   ],
+   "group_depth": 2,
+   "category": "corexy",
+   "tags": "voron corexy printer spare parts",
+   "notes": "Voron 2.4 printed parts (CoreXY). ABS/ASA recommended by Voron; 0.4 nozzle, 0.2 mm layers, 40% infill, 4 walls.",
+   "license": "GPL-3.0"
+  },
+  {
+   "repo": "VoronDesign/Voron-Tap",
+   "ref": "main",
+   "include": [
+    "OptoTap/STLs",
+    "STLs"
+   ],
+   "group_depth": 1,
+   "category": "corexy",
+   "tags": "voron tap probe corexy toolhead",
+   "notes": "Voron Tap nozzle probe parts.",
+   "license": "GPL-3.0"
+  },
+  {
+   "repo": "VoronDesign/Voron-0",
+   "ref": "Voron0.2r1",
+   "include": [
+    "STLs"
+   ],
+   "group_depth": 2,
+   "category": "corexy",
+   "tags": "voron v0 corexy small printer parts",
+   "notes": "Voron 0.2 printed parts (small CoreXY).",
+   "license": "GPL-3.0"
+  },
+  {
+   "repo": "FatBrotherGames/CableClipGenerator",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "cable clip custom",
+   "description": "This tool allows to easily generate custom fitted 3d printable cable clip .stl files to screw / tape on walls. ",
+   "max_files": 60
+  },
+  {
+   "repo": "prisant-labs/3d-cable-box-parametric-openscad",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "cable box management",
+   "description": "Parametric OpenSCAD cable management box: configurable side openings, optional centre post, stabilizer fins, floor cutouts, and print-bed slicing with snap-fit clips.",
+   "max_files": 60
+  },
+  {
+   "repo": "inhabitworker/cableTie",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "cable tie zip tie",
+   "description": "Parametric cable tie, with parameters governing depth/teeth, length and tying functionality etc.",
+   "max_files": 60
+  },
+  {
+   "repo": "charlespascoe/desk-cable-organiser",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "desk cable organizer",
+   "description": "Desk Cable Organiser",
+   "max_files": 60
+  },
+  {
+   "repo": "greg-ware/elecparts",
+   "ref": "master",
+   "license": "Apache-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "electrical cabling parts conduit",
+   "description": "Electrical cabling parts",
+   "max_files": 60
+  },
+  {
+   "repo": "zavorka/cable-guide",
+   "ref": "master",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "rack cable guide",
+   "description": "Various cable guides mountable into EIA-310 rack rails",
+   "max_files": 60
+  },
+  {
+   "repo": "JimKnopfIoT/Cable-clip",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "cable clip",
+   "description": "3D printable Cable clip for healthcare bed. Created with Rhino 6.",
+   "max_files": 60
+  },
+  {
+   "repo": "pinae/Knickschutz",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "cable-management",
+   "tags": "cable strain relief",
+   "description": "Save your lighning-cable from lead fracture.",
+   "max_files": 60
+  },
+  {
+   "repo": "paulhayes/battery-pack-12v-3s4p-18650",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "18650 battery pack 12v holder",
+   "description": "3d printed portable battery pack. Could be used in a 3x4 or 4x3 arrangement. Modular stackable sections.",
+   "max_files": 60
+  },
+  {
+   "repo": "Spark-Studio-3D/SparkStudio_18650_Project",
+   "ref": "main",
+   "license": "MPL-2.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "18650 battery holder",
+   "description": "Initial Commit",
+   "max_files": 60
+  },
+  {
+   "repo": "qoobaa/18650",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "18650 cell holder",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "stickteo/battery-holder",
+   "ref": "main",
+   "license": "Public-Domain",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "battery holder aa 18650 parametric",
+   "description": "Simple battery holder. Adjustable OpenSCAD file for any amount of batteries.",
+   "max_files": 60
+  },
+  {
+   "repo": "bermau/battery_tray",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "battery tray storage",
+   "description": "An OpenScad program to print  a 3D tray for batteries ",
+   "max_files": 60
+  },
+  {
+   "repo": "Silvanosky/Waterproof-Battery-Box",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "waterproof battery box",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "all-solutions/Battery-Case",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "diy solar battery case pv",
+   "description": "Case für DYI-PV-Batterien",
+   "max_files": 60
+  },
+  {
+   "repo": "kgwhitaker/battery-boot",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "car battery terminal cover",
+   "description": "Car battery terminal protector.",
+   "max_files": 60
+  },
+  {
+   "repo": "chipmc/Solar-Panel-Bumper",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "solar panel mount bumper",
+   "description": "Bumper to protect the solar panel when mounted to a Frisbee golf target",
+   "max_files": 60
+  },
+  {
+   "repo": "GOFmugsy/outdoor-solar-light",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "solar light outdoor enclosure",
+   "description": "openscad and esphome for 3d-printed solar-powered outdoor light",
+   "max_files": 60
+  },
+  {
+   "repo": "scientress/solar-radiation-shield",
+   "ref": "master",
+   "license": "CC-BY-SA-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "radiation shield weather station sensor",
+   "description": "a 3d printable solar radiation shield",
+   "max_files": 60
+  },
+  {
+   "repo": "ClearCreekSci/CcsDataLoggerSolarPower",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "solar panel lithium battery mount logger",
+   "description": "Add a solar panel and lithium battery to make the data logger mobile",
+   "max_files": 60
+  },
+  {
+   "repo": "icefoxj/OutageAlarm",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "18650 power outage alarm case",
+   "description": "Audible power outage alarm: relay + rechargeable 18650 battery + buzzer, with a 3D-printed enclosure",
+   "max_files": 60
+  },
+  {
+   "repo": "lucanastasio/DSO138-case-18650",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "solar-battery",
+   "tags": "18650 case oscilloscope",
+   "description": "Yet another case",
+   "max_files": 60
+  },
+  {
+   "repo": "bmelton/everydangclamp",
+   "ref": "develop",
+   "license": "AGPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "pipe clamp parametric",
+   "description": "A set of Parametric OpenSCAD apps to generate 3D printable pipe clamps in any dimension",
+   "max_files": 60
+  },
+  {
+   "repo": "DrLex0/print3d-more-printable-assembled-wrench",
+   "ref": "master",
+   "license": "CC-BY-4.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "wrench adjustable printable",
+   "description": "3D Print - Fully assembled more 3D printable wrench (customizable)",
+   "max_files": 60
+  },
+  {
+   "repo": "iyegoroff/angle-clamp",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "angle clamp woodworking",
+   "description": "Parametric angle clamp",
+   "max_files": 60
+  },
+  {
+   "repo": "TomHodson/lab_clamps",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "clamp lab",
+   "description": "a set of parametric clamps that works pretty well for unheated glassware.",
+   "max_files": 60
+  },
+  {
+   "repo": "ultimachine/Test-Jig",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "test jig pcb pogo",
+   "description": "Parametric Test Jig in OpenSCAD",
+   "max_files": 60
+  },
+  {
+   "repo": "shreekumar3d/jigita",
+   "ref": "main",
+   "license": "AGPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "pcb assembly jig",
+   "description": "Ease PCB assembly with 3D printed jigs ",
+   "max_files": 60
+  },
+  {
+   "repo": "nelsonii/SolderingJigs",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "soldering jig fixture",
+   "description": "Soldering Jigs / Fixtures",
+   "max_files": 60
+  },
+  {
+   "repo": "bobdrzyzgula/Header-Soldering-Jigs",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "header soldering jig",
+   "description": "Board-specific header stands to help you solder them on your board straight.",
+   "max_files": 60
+  },
+  {
+   "repo": "X-Illuminati/logmaw",
+   "ref": "master",
+   "license": "Public-Domain",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "vise jaws drill press",
+   "description": "3D printable vice jaws to convert a \"4 in.\" drill press vice into a makeshift stickvice for electronics workholding.",
+   "max_files": 60
+  },
+  {
+   "repo": "eschlot/RatchetBox",
+   "ref": "main",
+   "license": "BSD-2-Clause",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "ratchet socket box organizer",
+   "description": "An OpenSCAD toolbox to build a model for a typical ratched box inlay. Highly customizable for any kind of box.  ",
+   "max_files": 60
+  },
+  {
+   "repo": "ostat/gridfinity_extended_openscad",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "gridfinity bins storage organizer",
+   "description": "Gridfinity Extended OpenSCAD Model",
+   "max_files": 60
+  },
+  {
+   "repo": "vector76/gridfinity_openscad",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "gridfinity baseplate bins",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "xphir/gridfinity-forstner-drill-bits-openscad",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "gridfinity drill bit storage",
+   "description": "Parametrics Gridfinity Forstner Drill Bits Storage Bins",
+   "max_files": 60
+  },
+  {
+   "repo": "mayermakes/AislyStencil",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "pcb stencil alignment",
+   "description": "PCB stencil alignment Tool  (3d printable without supports, CNCable and Lasercuttable) ",
+   "max_files": 60
+  },
+  {
+   "repo": "brvdboss/Snapmaker-cncdogs",
+   "ref": "main",
+   "license": "BSD-2-Clause",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "cnc clamp dogs wasteboard",
+   "description": "clamping dogs for the cnc wasteboard of the snapmaker2",
+   "max_files": 60
+  },
+  {
+   "repo": "westbuj/Diesel-Heater-Mount-Template",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "drill template diesel heater",
+   "description": "Use this project to place accurately center punch your van before drilling.",
+   "max_files": 60
+  },
+  {
+   "repo": "ke0ff/Yeti_Drain_Knob",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "tools",
+   "tags": "drain plug wrench",
+   "description": "Torque-assist \"wrench\" for a Yeti cooler drain plug",
+   "max_files": 60
+  },
+  {
+   "repo": "allep/ikea_knob",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "knob kitchen hood replacement",
+   "description": "A 3D printable hood knob for Ikea kitchens.",
+   "max_files": 60
+  },
+  {
+   "repo": "ojousima/siemens_knob",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "knob replacement appliance",
+   "description": "3D model of a knob replacement part",
+   "max_files": 60
+  },
+  {
+   "repo": "mmccool/toaster-oven-knob",
+   "ref": "master",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "knob toaster oven replacement",
+   "description": "Replacement Knob for Toaster Oven",
+   "max_files": 60
+  },
+  {
+   "repo": "CowwanVT/OpenKnob",
+   "ref": "main",
+   "license": "Public-Domain",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "volume knob",
+   "description": "A free an open source 3d printable volume knob",
+   "max_files": 60
+  },
+  {
+   "repo": "pokorj54/radiator-knob-cap",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "radiator valve knob cap",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "kototoibashi/8mm_knob_shaft_1",
+   "ref": "master",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "knob 8mm shaft",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "toorbit/snowblower-handle-cam-lock",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "snowblower cam lock replacement",
+   "description": "3D printable replacement parts for the Snow Joe SJ625E handle cam lock mechanism.",
+   "max_files": 60
+  },
+  {
+   "repo": "ThrownLemon/3d-models",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "replacement parts household",
+   "description": "A collection of 3D printable models for replacement parts and useful objects",
+   "max_files": 60
+  },
+  {
+   "repo": "megansprojects/3dReplacementParts",
+   "ref": "main",
+   "license": "CC0-1.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "replacement parts vintage electronics",
+   "description": "3d files for replacement parts for vintage electronics equipment.",
+   "max_files": 60
+  },
+  {
+   "repo": "patagonaa/car-fridge-replacement-connector",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "12v fridge connector replacement",
+   "description": "Replacement power connector for Hcalory EC30 portable/car fridge",
+   "max_files": 60
+  },
+  {
+   "repo": "srsgit/SilhouetteCameoRoller",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "replacement roller",
+   "description": "Replacement roller for Silhouette Cameo 3",
+   "max_files": 60
+  },
+  {
+   "repo": "AkBKukU/series80-ti99-keystemreplacement",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "switch stem replacement",
+   "description": "A replacement peice for the stackpole switches that fail used in HP Series 80 and TI 99 computers",
+   "max_files": 60
+  },
+  {
+   "repo": "abemassry/screwhook",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "hook screw",
+   "description": "A hook using openscad",
+   "max_files": 60
+  },
+  {
+   "repo": "amanica/poolpipe-hook",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "pool pipe hook",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "jccyr01/TrackWall_Hooks",
+   "ref": "master",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "wall hooks garage",
+   "description": "",
+   "max_files": 60
+  },
+  {
+   "repo": "mseminatore/mdsSpacer",
+   "ref": "master",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "pcb standoff spacer",
+   "description": "OpenSCAD script for a customizeable PCB standoff spacer",
+   "max_files": 60
+  },
+  {
+   "repo": "brhubbar/Screw-Boss-OpenSCAD",
+   "ref": "main",
+   "license": "GPL-3.0",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "screw boss insert",
+   "description": "OpenSCAD library for creating screw bosses in 3D printed parts, optimized for zero support designs.",
+   "max_files": 60
+  },
+  {
+   "repo": "slahiri/open-cad",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "storage box protective case",
+   "description": "3D-printable Pelican-style protective storage box designed in OpenSCAD. Multi-color basket-weave lid, barrel hinges, butterfly latches, split parts for K2 Plus.",
+   "max_files": 60
+  },
+  {
+   "repo": "odek-no/3d-parts-library",
+   "ref": "main",
+   "license": "MIT",
+   "include": [
+    ""
+   ],
+   "group_depth": 0,
+   "category": "household",
+   "tags": "parts library brackets hinges openscad",
+   "description": "An OpenSCAD library for useful parts. Uses BOSL2.",
+   "max_files": 60
+  }
+ ],
+ "ifixit": {
+  "license": "CC-BY-NC-SA-3.0",
+  "per_query": 12,
+  "queries": [
+   "3D printer",
+   "generator",
+   "chainsaw",
+   "lawn mower",
+   "water heater",
+   "faucet",
+   "toilet",
+   "radio",
+   "flashlight",
+   "solar",
+   "bicycle",
+   "power tool",
+   "refrigerator",
+   "washing machine",
+   "furnace",
+   "car battery",
+   "headlamp",
+   "multimeter"
+  ]
+ },
+ "scad": {
+  "dir": "coldboot/parts-scad",
+  "license": "CC0-1.0",
+  "author": "Ember (generated with OpenSCAD)"
+ }
 }

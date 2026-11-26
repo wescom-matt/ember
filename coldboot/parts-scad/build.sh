@@ -27,3 +27,33 @@ openscad -q -o stl/belt_clip_38mm.stl -D 'belt=38' belt_clip.scad
 openscad -q -o stl/drill_guide.stl  drill_guide.scad
 openscad -q -o stl/radio_stand_36mm.stl -D 'slot=36' radio_stand.scad
 openscad -q -o stl/radio_stand_42mm.stl -D 'slot=42' radio_stand.scad
+openscad -q -o stl/bnc_mount_9.7mm.stl -D 'hole=9.7' sma_mount.scad
+openscad -q -o stl/dipole_center_so239.stl dipole_center.scad
+openscad -q -o stl/end_insulator_70mm.stl end_insulator.scad
+openscad -q -o stl/coax_strain_relief_rg58.stl -D 'coax=5' coax_strain_relief.scad
+openscad -q -o stl/coax_strain_relief_rg8x.stl -D 'coax=6.1' coax_strain_relief.scad
+openscad -q -o stl/coax_strain_relief_lmr400.stl -D 'coax=10.3' coax_strain_relief.scad
+openscad -q -o stl/mast_clamp_25mm.stl -D 'pipe=25' mast_clamp.scad
+openscad -q -o stl/mast_clamp_32mm.stl -D 'pipe=32' mast_clamp.scad
+openscad -q -o stl/mast_clamp_42mm.stl -D 'pipe=42' mast_clamp.scad
+openscad -q -o stl/element_holder_20sq_4.8mm.stl -D 'boom=20' -D 'element=4.8' element_holder.scad
+openscad -q -o stl/element_holder_25round_6.35mm.stl -D 'boom=25' -D 'round_boom=true' -D 'element=6.35' element_holder.scad
+openscad -q -o stl/ht_holder_uv5r_bff8.stl -D 'width=59' -D 'depth=33' ht_holder.scad
+openscad -q -o stl/ht_holder_uv9r_plus.stl -D 'width=59' -D 'depth=38' ht_holder.scad
+openscad -q -o stl/ht_holder_anytone_d868uv.stl -D 'width=63' -D 'depth=37' ht_holder.scad
+openscad -q -o stl/mic_hanger_keyhole.stl mic_hanger.scad
+openscad -q -o stl/rig_tilt_wedge.stl rig_tilt_wedge.scad
+openscad -q -o stl/drip_coupler_4mm.stl -D 'type="coupler"' drip_fitting.scad
+openscad -q -o stl/drip_elbow_4mm.stl -D 'type="elbow"' drip_fitting.scad
+openscad -q -o stl/drip_tee_4mm.stl -D 'type="tee"' drip_fitting.scad
+openscad -q -o stl/drip_cross_4mm.stl -D 'type="cross"' drip_fitting.scad
+openscad -q -o stl/drip_stake_6.5mm.stl drip_stake.scad
+openscad -q -o stl/battery_18650_holder_4x1.stl -D 'cells_x=4' battery_18650_holder.scad
+openscad -q -o stl/battery_18650_holder_4x2.stl -D 'cells_x=4' -D 'cells_y=2' battery_18650_holder.scad
+openscad -q -o stl/solar_bracket_35mm.stl -D 'frame=35' solar_panel_bracket.scad
+openscad -q -o stl/solar_bracket_40mm.stl -D 'frame=40' solar_panel_bracket.scad
+openscad -q -o stl/esp32_devkit_30pin_case.stl -D 'board=[51.5,28.5]' esp32_case.scad
+openscad -q -o stl/esp32_devkit_38pin_case.stl -D 'board=[55,28]' esp32_case.scad
+openscad -q -o stl/heltec_v3_case_sma.stl -D 'board=[50.2,25.5]' -D 'antenna=6.6' esp32_case.scad
+openscad -q -o stl/ttgo_lora32_case_sma.stl -D 'board=[61,26]' -D 'antenna=6.6' esp32_case.scad
+openscad -q -o stl/wemos_d1_mini_case.stl -D 'board=[34.2,25.6]' -D 'above=8' esp32_case.scad
