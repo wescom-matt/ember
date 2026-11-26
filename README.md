@@ -1,15 +1,16 @@
 # Ember and ColdBoot
 
-**Version 0.5.0** · private repo `wescom-matt/ember` · runs on the Nomad box (ThinkPad P1, `think-pad-p1`, 192.168.1.177)
+**Version 0.6.0** · private repo `wescom-matt/ember` · runs on the Nomad box (ThinkPad P1, `think-pad-p1`, 192.168.1.177)
 
 **Ember** is an offline workshop assistant you open in a web browser on the home network. Its main jobs:
 
-1. **Radio programmer:** reads, edits and writes radio channels with CHIRP.
+1. **Radio programmer:** reads, edits and writes radio channels with CHIRP, with an offline radio library that includes an AMSAT satellite pack (section 9).
 2. **Coding, build and flash tool:** writes code and builds and flashes ESP32/LoRa boards (PlatformIO, arduino-cli, esptool).
 3. **3D printer helper:** runs the ELEGOO Centauri Carbon 2, slices offline and keeps a parts library.
 4. **Config changer, installer and fixer:** reads logs, edits config files, restarts services and installs packages on the P1 and your other computers.
 
 5. **Off-grid project work:** keeps Outpost and the other `wescom-matt` projects buildable with no internet: repo mirrors, cached toolchains and packages, a developer reference library and a Projects view (section 13).
+6. **Small-model helpers:** a context budget, code index, project notes, small-step mode, rolling chat summary, trimmed build errors and edit-by-diff help the small local models do real project work; switch to the slower `qwen3.5-9b-8k` when 4k runs out (section 14).
 
 Ember is also a **general-purpose chat assistant**. Ask it anything: it answers from the local AI model, and when it helps it searches and cites the Nomad library, the radio and developer references or the parts library. Offline it is slower than an online assistant, and the small local model knows less, so check anything important. Ember never contacts the internet.
 
@@ -37,7 +38,7 @@ Ember is also a **general-purpose chat assistant**. Ask it anything: it answers 
 11. [3D printer: ELEGOO Centauri Carbon 2](#11-3d-printer-elegoo-centauri-carbon-2)
 12. [Parts library](#12-parts-library)
 13. [Off-grid project work](#13-off-grid-project-work)
-14. [Safety boundary](#14-safety-boundary)
+14. [Small-model helpers (4k and 8k)](#14-small-model-helpers-4k-and-8k)
 15. [Security model](#15-security-model)
 16. [ColdBoot](#16-coldboot)
 17. [Where things live](#17-where-things-live)
@@ -55,7 +56,7 @@ Ember is also a **general-purpose chat assistant**. Ask it anything: it answers 
 | Nomad (Project Nomad, Docker) | Offline library (medical, repair, radio, outdoors...). Installed separately. | `/opt/project-nomad` |
 | Qdrant (in Nomad) | Library search index, `nomad_knowledge_base`, about 3.6 million passages | `127.0.0.1:6333` |
 | Ollama 0.40.14 (in Nomad) | Runs the AI models | `127.0.0.1:11434` |
-| Models | `qwen3.5-9b-4k` (default, can use tools), `llama3.2-4k`, `llama3.2-1b-4k`, `nomic-embed-text:v1.5` (search). "4k" models are the base models with a smaller memory window so they fit the 4 GB T1000 card. | |
+| Models | `qwen3.5-9b-4k` (default, can use tools), `qwen3.5-9b-8k` (bigger memory, slower on full turns; section 14), `llama3.2-4k`, `llama3.2-1b-4k`, `nomic-embed-text:v1.5` (search). "4k" models are the base models with a smaller memory window so they fit the 4 GB T1000 card. | |
 | nomad-search | Library search command, also used by Goose | `nomad-search "question"` |
 | Goose 1.59.1 | Terminal AI agent, asks before every action | `goose`, `goose-lw "task"` |
 | Open Interpreter 0.4.3 | Code agent, asks before running code | `ai-interp` |
@@ -75,7 +76,7 @@ Other computers Ember can work on (once you add them, section 5):
 
 ## 2. First-time setup (Matt runs these by hand)
 
-Ember 0.5.0 is installed and running on the P1. These steps need you, because they need a password, a sudo prompt or physical access.
+Ember 0.6.0 is installed and running on the P1. These steps need you, because they need a password, a sudo prompt or physical access.
 
 1. **Make your Ember admin account** (on the P1):
    ```bash
@@ -108,8 +109,8 @@ Ember 0.5.0 is installed and running on the P1. These steps need you, because th
 
 **The screen**
 - **Left sidebar:** your chats (search, rename, delete), **Workshop**, **Users & admin** (admins only), **Change password**.
-- **Chat box:** pick the model, the knowledge base (**None**, **Nomad**, **Radio reference**, **Parts library**, **Developer reference**), Think mode, and **Commands** with a target computer.
-- **Workshop window** has five tabs: **Radio**, **Printer & slicing**, **Parts library**, **Hosts** and **Projects**.
+- **Chat box:** pick the model, the knowledge base (**None**, **Nomad**, **Radio reference**, **Parts library**, **Developer reference**), Think mode, **Commands** with a target computer, the **Project** (loads its notes and code) and **Small steps**. Under the box: a context indicator and, for the 8k model, a speed warning.
+- **Workshop window** has six tabs: **Radio**, **Printer & slicing**, **Parts library**, **Hosts**, **Projects** (with project notes and the code index) and **Models** (speed sample).
 
 **The `ember` command (on the P1)**
 
@@ -213,9 +214,38 @@ Images are stored per radio in `~/.local/share/ember/radios/<id>/`, each with a 
 
 ## 9. Radio reference library
 
-An offline, searchable copy of 23 trusted sources: the ARRL band plan, FCC Part 97 (amateur) and Part 95 (GMRS, FRS, MURS, CB), the marine, aviation and Part 90 frequency rules, USCG marine channels, NOAA weather radio, NOAA space weather and background pages. Pick **Radio reference** in the chat. Answers cite the source, and Ember won't invent frequencies. Rules change, so check the source date for anything that matters.
+An offline, searchable library. Pick **Radio reference** in the chat. Answers cite the source, and Ember won't invent frequencies. Rules and orbits change, so check the source date for anything that matters. Stored in `~/.local/share/ember/radio-kb/` (about 20 MB with the AMSAT pack); every source, its licence, date and checksum is listed in `radio-kb/SOURCES.json`.
 
-It's stored in `~/.local/share/ember/radio-kb/` (about 7 MB). To refresh it while online, run `.venv/bin/python scripts/fetch_radio_kb.py --rebuild` on the P1.
+**Core (23 sources):** the ARRL band plan, FCC Part 97 (amateur) and Part 95 (GMRS, FRS, MURS, CB), the marine, aviation and Part 90 frequency rules, USCG marine channels, NOAA weather radio, NOAA space weather and background pages.
+
+**AMSAT pack (34 sources, ~11 MB raw, ~2,200 passages):** for amateur satellite work.
+- **Satellites and frequencies:** SatNOGS DB (CC BY-SA 4.0): every in-orbit amateur satellite's active transmitters, with uplink/downlink, mode, baud and inverting flag (for example RS-44's V/U linear transponder).
+- **TLEs:** CelesTrak's amateur group and AMSAT's `nasabare.txt` (public orbital data). They're also saved as plain files in `radio-kb/tle/`, so Gpredict can import them offline (Edit → Update TLE → from local files).
+- **Ember guides** (written for Ember, in `docs/amsat/`):
+  - pass prediction and TLE freshness
+  - Doppler formulas and the "one true frequency" rule
+  - Hamlib `rigctld` with the IC-7300. Note that it covers HF/6 m only, so it's useful just for 10 m/6 m links or with transverters.
+  - `rotctld` with Gpredict
+  - pointing a phased array from az/el (element phases, true time delay, grating lobes)
+  - radar basics (pulse, FMCW), monopulse and beam-steered tracking, alpha-beta and Kalman track filters
+  - beam update timing, pass scheduling, make-before-break handoff between satellites and Doppler hand-over
+- **Software docs:**
+  - Hamlib `rigctld`/`rigctl`/`rotctld`/`rotctl` man pages (GPL)
+  - Gpredict rig notes for the IC-9700, IC-9100, IC-910 and FT-847, plus its time-keeping note (GPL)
+  - the KrakenSDR DoA software README (GPL-3.0)
+- **Tutorials and background:**
+  - PySDR chapters on beamforming/DOA, the Phaser (CN0566) phased array and PlutoSDR (CC BY-NC-SA 4.0: free to keep and share, not for commercial use)
+  - Wikipedia (CC BY-SA 4.0) on amateur satellites, TLEs, SGP4, Doppler, az/el coordinates, phased arrays, beamforming, beam steering, monopulse, FMCW and pulse-Doppler radar, radar trackers, alpha-beta and Kalman filters, handover and direction finding
+- **Left out on purpose** (no open licence):
+  - the AMSAT status and frequency pages
+  - JE9PEL's satellite list
+  - the KrakenSDR wiki and manuals
+  - the Analog Devices wiki
+
+Refresh while online on the P1:
+- `.venv/bin/python scripts/fetch_radio_kb.py --only amsat` updates TLEs and SatNOGS. Do it weekly before satellite work.
+- `.venv/bin/python scripts/fetch_radio_kb.py` updates everything.
+- `--rebuild` only re-indexes the saved files, offline.
 
 ## 10. Code, build and flash (build hosts)
 
@@ -361,9 +391,32 @@ Build or refresh it online: `.venv/bin/python scripts/fetch_dev_kb.py [--rebuild
 5. Mint and Zorin: `sudo apt install build-essential cmake` for Outpost's native tests.
 6. Refresh the USB: `./coldboot.sh cache /media/matt/USB/coldboot-cache`.
 
-## 14. Safety boundary
+## 14. Small-model helpers (4k and 8k)
 
-Ember will not write autonomous weapon targeting or firing logic. Cameras, sensors, pan/tilt mounts, alarms, lights and sirens are fine. This rule is in Ember's instructions to the model and in these docs.
+The local models have a small memory: `qwen3.5-9b-4k` holds about 4,000 tokens (roughly 14,000 characters) for the whole turn. Ember 0.6 packs that memory carefully so project work still goes well.
+
+**Pick a project** in the chat box (the **Project** list). Ember then adds the project's notes and the most relevant code to each turn. Turn on **Small steps** (needs **Commands**) for bigger jobs.
+
+| Helper | What it does |
+|---|---|
+| **Context budget** | Splits the model's memory per turn: 4k = system 25%, notes 8%, code/references 20%, history 22%, reply 25%; 8k gives code and history more room. The line under the chat box shows what this turn used, for example `Context ~2.9k / 4.1k tokens: sys 900 · notes 310 · code/refs 780 · history 870 · reply 1.0k · code: main.cpp:120`. |
+| **Code index** | Splits each project's source (C/C++/Arduino, Python, Dart, C#, JS/TS) into function-sized chunks, embeds them with `nomic-embed-text` and pulls the best 3-5 chunks that fit the budget into each turn. It reads the repo mirror in `~/git` (offline; may lag work not yet pushed from the build host), skips generated code, and re-indexes changed files in the background when the mirror's HEAD changes. Outpost: 133 files, ~800 chunks. **Re-index code** in Workshop → Projects forces it. |
+| **Project notes** | A short summary per project (purpose, board, pins, commands, key decisions), loaded first. Auto-drafted from the Projects entry and the repo (README, `platformio.ini`, pin `#define`s) with no model call; edit and save it in Workshop → Projects → Project notes (admin). The agent can propose changes with `update_notes`; you see the diff and confirm. The last 5 versions are kept. |
+| **Small steps** | The model first plans the task as up to 6 tiny steps. Each step then runs with a fresh, minimal context: notes + code for that step + the step + one line per finished step. The plan shows in the reply and each step is ticked off as it finishes. Risky actions still stop for **Run**. |
+| **Rolling summary** | When a chat's history no longer fits, older turns are compressed into a short summary (one extra model call) and the last 4 messages stay word for word. You see a notice when it happens. |
+| **Trimmed build errors** | When a command fails with long output, the model gets only the first real errors (PlatformIO/gcc, CMake, Flutter/Dart, dotnet, Python tracebacks) plus the source lines around them from the mirror, about 1 KB instead of 8 KB. The full output is still in the action card. |
+| **Edit by diff** | `edit_file` takes small SEARCH/REPLACE blocks or a unified diff. Ember reads the file, applies the edit, checks it (every block must match once, braces stay balanced, Python must still parse), shows the diff, asks, then writes it and keeps `FILE.bak-ember`. `write_file` is now only for new files. |
+
+**The 8k model.** `qwen3.5-9b-8k` is the same model with an 8,192-token memory. Pick it in the model list when 4k runs out (big files, long error logs). A warning with the measured numbers appears when you select it. 4k stays the default.
+
+**Speed sample** (Workshop → **Models**; measured on the P1, Quadro T1000 4 GB, 2026-11-25; only about a third of the 9B model fits on the GPU, so most of it runs on the CPU; actual speed varies):
+
+| Model | Writing speed | First word, short prompt | First word, full memory | Reading speed | On GPU |
+|---|---|---|---|---|---|
+| qwen3.5-9b-4k | 4.6 tok/s | 6.6 s (cold start) | 50 s (3,300 tokens) | ~66 tok/s | 1.97 GB (33%) |
+| qwen3.5-9b-8k | 4.4 tok/s (4.0 when full) | 6.7 s (cold start) | 102 s (6,500 tokens) | ~64 tok/s | 1.88 GB (31%) |
+
+At the same prompt size both models are equally fast. The 8k model is slower only because a full 8k turn has twice as much to read. Admins can click **Re-run benchmark** (about 10 minutes; it briefly unloads other models) to store fresh numbers for this machine in `~/.local/share/ember/model-bench.json`. You can also run `.venv/bin/python -m ember.bench` on the P1.
 
 ## 15. Security model
 
@@ -401,7 +454,7 @@ cd ~/ember
 
 It checks Nomad and Qdrant read-only and never changes them. Steps that need sudo go into `~/coldboot-sudo-steps.sh` for you to read and run.
 
-**backup** writes `ember-coldboot-<host>-<date>.tar.gz` (mode 600) and a `.sha256` file. It holds the database (users, chats, targets, encrypted logins, radio list, audit log), **the secret key**, settings, the TLS certificate and the Goose and Interpreter settings. Keep it offline; never email or upload it. Radio images, the parts library and the radio library are not in the backup. Copy `~/.local/share/ember/radios/` yourself if you want your radio backups saved too.
+**backup** writes `ember-coldboot-<host>-<date>.tar.gz` (mode 600) and a `.sha256` file. It holds the database (users, chats, targets, encrypted logins, radio list, audit log), **the secret key**, settings, the TLS certificate, the Goose and Interpreter settings, project notes, the projects list and the model speed sample. Keep it offline; never email or upload it. Radio images, the parts library and the radio library are not in the backup. Copy `~/.local/share/ember/radios/` yourself if you want your radio backups saved too.
 
 **restore** checks every checksum and refuses unsafe archives. It keeps replaced files as `*.pre-restore-<date>` and restarts Ember. `--to DIR` tests into a folder, and `--dry-run` only checks.
 
@@ -416,7 +469,7 @@ It checks Nomad and Qdrant read-only and never changes them. Steps that need sud
 | `ember-wheels/` | Ember's packages | ~0.03 GB |
 | `buildtools/` | CHIRP, PlatformIO + ESP32 packages, esptool, arduino-cli, OrcaSlicer, ElegooSlicer, CC2 profiles | ~5.4 GB |
 | `parts/` | Parts library (skipped if bigger than `--parts-gb`, default 3) | ~1 GB |
-| `radio-kb/` | Radio reference library | ~7 MB |
+| `radio-kb/` | Radio reference library with the AMSAT pack | ~20 MB |
 | `buildhost/pio-envs/` | Outpost's PlatformIO cores: pioarduino 55.03.312 (ship env, Outpost 2.0) ~5.5 GB, espressif32 7.1.3 (legacy env) ~2 GB | ~7.5 GB |
 | `projects/` | Library versions, Python wheels, npm cache, Node, NuGet packages, MANIFEST.json | ~0.7 GB |
 | `repos/` | `git bundle` of all 12 repos, plus issues and PRs | ~0.06 GB |
@@ -436,7 +489,10 @@ A 32 GB USB disk still fits (about 28 GB, so only ~2 GB spare); **a 64 GB disk i
 | TLS cert and key | `~/.config/ember/tls/` |
 | Database | `~/.local/share/ember/ember.db` |
 | Radio images | `~/.local/share/ember/radios/<id>/` |
-| Radio library | `~/.local/share/ember/radio-kb/` |
+| Radio library | `~/.local/share/ember/radio-kb/` (TLE files in `tle/`, sources in `SOURCES.json`) |
+| Project notes | `~/.local/share/ember/notes/` (in the backup) |
+| Code index | `~/.local/share/ember/code-index/` (rebuilt from the mirrors) |
+| Model speed sample | `~/.local/share/ember/model-bench.json` (else the sample shipped in `ember/model_bench_sample.json`) |
 | Parts library | `~/.local/share/ember/parts/` |
 | Developer reference | `~/.local/share/ember/dev-kb/` (sources in `SOURCES.json`) |
 | Projects list | `~/.local/share/ember/projects.json` (seed: `coldboot/projects-seed.json`) |
@@ -467,6 +523,9 @@ On radio and build hosts: `~/.local/share/ember/` (chirp-venv, pio-venv, slicer 
 | Slicing fails | Run `install-buildhost.sh --build` on the build host and its sudo steps (the slicer needs `libwebkit2gtk-4.1-0`). |
 | Parts search empty | `.venv/bin/python scripts/parts_import.py stats` on the P1; re-run `seed` while online, or `./coldboot.sh install --cache DIR`. |
 | `./coldboot.sh check` shows FAIL | Read the FAIL line; most are fixed by `./coldboot.sh install`. More in [COLDBOOT.md](COLDBOOT.md). |
+| Code chunks never show up | The project needs a mirror in `~/git` (section 13). Workshop → Projects shows "Code index: … chunks"; click **Re-index code**. Check `ember logs` for "code index". |
+| 8k model feels stuck | A full 8k turn takes about 1.5-2 minutes before the first word on the P1. Use 4k with **Small steps** for long jobs. |
+| Satellite frequencies or TLEs look old | `.venv/bin/python scripts/fetch_radio_kb.py --only amsat` while online. |
 | Forgot the Ember password | `ember reset-password matt` on the P1. |
 | Projects view says "no mirror" | Run `scripts\windows\mirror-repos.ps1` on Los Gatos while online, or `bash scripts/import-mirrors.sh /media/matt/USB/coldboot-cache/repos` on the P1. |
 | Developer reference empty | `.venv/bin/python scripts/fetch_dev_kb.py` on the P1 while online (needs `pdftotext`). |
@@ -492,6 +551,8 @@ On radio and build hosts: `~/.local/share/ember/` (chirp-venv, pio-venv, slicer 
 - **Other computers:** Ember can only reach them after you add them and their keys (section 5).
 - **Tailscale** is not installed yet.
 - **Off-grid project work:** no PRs, issues, Actions or cloud agents offline; iOS needs a Mac; online AI features in BlackCat and Face-AI won't work; the Outpost 2.0 board files are untested on hardware (section 13).
+- **Small-model helpers:** the code index reads the mirror, not the build host, so unpushed work isn't in it; Small steps adds one planning call; summaries can drop detail. The speed numbers are one sample.
+- **AMSAT pack:** TLEs go stale in days; SatNOGS status is community data. The phased-array and radar guides are reference notes; check Part 97 before transmitting.
 - **The AI model** has a small memory (4k), so long jobs work best in short steps. Check anything safety-critical yourself.
 
 ## 20. For developers
@@ -519,9 +580,11 @@ EMBER_DEV=1 ./install.sh
   - `printer.py`
   - `parts.py`
   - `projects.py`, `dev_kb.py`
+  - `budget.py`, `context.py` (context budget, rolling summary), `code_index.py`, `notes.py`, `build_errors.py`, `patching.py`, `bench.py`
   - `static/`: the web page, including `workshop.js`
 - `coldboot.sh` and `coldboot/` (pins, models, `buildhost/` installers, `parts-scad/`, `parts-seed.json`, `projects-seed.json`, `projects_cache.py`, `outpost2-template/`)
-- `scripts/`: previews, radio and developer library fetch, parts import, mirror import/sync, `windows/` scripts for Los Gatos
+- `docs/amsat/`: Ember's satellite and phased-array guides (indexed into the radio library)
+- `scripts/`: previews, radio (with AMSAT) and developer library fetch, parts import, mirror import/sync, `windows/` scripts for Los Gatos
 - `tests/`
 - `docs/RECOVERY-PLAN.md`
 
@@ -535,5 +598,6 @@ Requirements are pinned with hashes; regenerate them with `uv pip compile requir
 | 0.2.0 | Commands: targets, encrypted credentials, risk checks, confirm cards, audit log |
 | 0.3.0 | ColdBoot: rebuild, check, backup/restore, offline cache |
 | 0.3.1 | Full README and recovery plan |
-| 0.4.0 | Workshop refocus: host roles, CHIRP radio programming, radio library, build hosts, CC2 printer and slicing, parts library (200 parts, 214 guides), fix mode, safety boundary |
+| 0.4.0 | Workshop refocus: host roles, CHIRP radio programming, radio library, build hosts, CC2 printer and slicing, parts library (200 parts, 214 guides), fix mode |
 | 0.5.0 | Off-grid project work: Projects view, repo mirrors and offline git, Outpost PlatformIO and package caches, developer reference (ESP32/LoRa, Heltec V4, AX.25/X.25), Outpost 2.0 (Heltec V4-R8) starter, general chat documented |
+| 0.6.0 | Small-model helpers: context budget and indicator, code index, project notes, small-step mode, rolling summary, trimmed build errors, edit-by-diff; `qwen3.5-9b-8k` with a measured speed sample and Models page; AMSAT pack (satellites, TLEs, Doppler, rig/rotator control, phased arrays, radar tracking, handoff) |

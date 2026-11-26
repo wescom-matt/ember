@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +18,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from ember import parts, printer, projects, radio, roles, targets, tools
+from ember import bench, budget, code_index, notes, parts, printer, projects, radio, roles, targets, tools
 from ember.db import audit, connect, now
 from ember.deps import Admin, User, _db
 from ember.runner import (
@@ -563,7 +564,71 @@ def register_projects_routes(app: FastAPI) -> None:
         return {"projects": projects.with_status(items)}
 
 
+class NotesIn(BaseModel):
+    text: str = Field(min_length=1, max_length=notes.MAX_NOTES_CHARS)
+
+
+def _project(request: Request, name: str) -> str:
+    if not any(p["name"] == name for p in projects.load(_settings(request).data_dir)):
+        raise HTTPException(status_code=404, detail="unknown project")
+    return name
+
+
+def register_helper_routes(app: FastAPI) -> None:
+    @app.get("/api/projects/{name}/notes")
+    def notes_get(name: str, user: User, request: Request) -> dict[str, Any]:
+        settings = _settings(request)
+        out = notes.get(settings.data_dir, _project(request, name))
+        return {**out, "index": code_index.status(settings.data_dir, name)}
+
+    @app.put("/api/admin/projects/{name}/notes")
+    def notes_put(name: str, body: NotesIn, user: Admin, request: Request) -> dict[str, Any]:
+        try:
+            text = notes.save(_settings(request).data_dir, _project(request, name), body.text)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        with connect(_db(request)) as conn:
+            audit(conn, user["id"], "notes_saved", name[:80])
+        return {"text": text, "saved": True}
+
+    @app.post("/api/admin/projects/{name}/index")
+    def index_refresh(name: str, user: Admin, request: Request) -> dict[str, Any]:
+        settings = _settings(request)
+        started = code_index.refresh_async(settings.data_dir, settings.ollama_url, _project(request, name), force=True)
+        return {"started": started, **code_index.status(settings.data_dir, name)}
+
+    @app.get("/api/models/info")
+    def models_info(user: User, request: Request) -> dict[str, Any]:
+        data = bench.load(_settings(request).data_dir)
+        return {**data, "running": _BENCH["running"], "budgets": {
+            m: budget.plan(m).tokens | {"ctx": budget.plan(m).ctx} for m in bench.MODELS}}
+
+    @app.post("/api/admin/models/bench")
+    def models_bench(user: Admin, request: Request) -> dict[str, Any]:
+        settings = _settings(request)
+        with _BENCH_LOCK:
+            if _BENCH["running"]:
+                return {"started": False}
+            _BENCH["running"] = True
+
+        def work() -> None:
+            try:
+                bench.save(settings.data_dir, bench.run(settings.ollama_url))
+            finally:
+                _BENCH["running"] = False
+
+        threading.Thread(target=work, name="bench", daemon=True).start()
+        with connect(_db(request)) as conn:
+            audit(conn, user["id"], "bench_started")
+        return {"started": True}
+
+
+_BENCH: dict[str, bool] = {"running": False}
+_BENCH_LOCK = threading.Lock()
+
+
 def register_device_routes(app: FastAPI) -> None:
+    register_helper_routes(app)
     register_radio_routes(app)
     register_printer_routes(app)
     register_parts_routes(app)

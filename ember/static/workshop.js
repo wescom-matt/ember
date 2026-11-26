@@ -17,9 +17,9 @@
 
   function showTab(name) {
     document.querySelectorAll(".wtab").forEach(function (t) { t.classList.toggle("active", t.dataset.wtab === name); });
-    ["radio", "printer", "parts", "projects", "hosts"].forEach(function (n) { $("wtab-" + n).classList.toggle("hidden", n !== name); });
+    ["radio", "printer", "parts", "projects", "hosts", "models"].forEach(function (n) { $("wtab-" + n).classList.toggle("hidden", n !== name); });
     msg("");
-    var f = { radio: loadRadio, printer: loadPrinter, parts: searchParts, projects: loadProjects, hosts: loadHosts }[name];
+    var f = { radio: loadRadio, printer: loadPrinter, parts: searchParts, projects: loadProjects, hosts: loadHosts, models: loadModelsInfo }[name];
     f().catch(function (e) { msg(e.message); });
   }
 
@@ -235,7 +235,39 @@
     });
     $("pj-admin").classList.toggle("hidden", !U.isAdmin());
     $("pj-json").value = JSON.stringify(d.projects.map(function (p) { var q = Object.assign({}, p); delete q.mirror; delete q.last; return q; }), null, 2);
+    var pick = $("pj-notes-pick"), keep = pick.value; pick.textContent = "";
+    d.projects.forEach(function (p) { opt(pick, p.name, p.name); });
+    if (keep) pick.value = keep;
+    $("pj-notes-save").classList.toggle("hidden", !U.isAdmin()); $("pj-reindex").classList.toggle("hidden", !U.isAdmin());
+    await loadNotes();
   }
+  function pjUrl(admin, tail) { return "/api/" + (admin ? "admin/" : "") + "projects/" + encodeURIComponent($("pj-notes-pick").value) + tail; }
+  async function loadNotes() {
+    if (!$("pj-notes-pick").value) return;
+    var d = await api("GET", pjUrl(false, "/notes"));
+    $("pj-notes").value = d.text; $("pj-notes-state").textContent = d.saved ? "saved" : "auto-drafted from the repo (not saved yet)";
+    var ix = d.index || {};
+    $("pj-index").textContent = "Code index: " + (ix.state === "ready" ? ix.chunks + " chunks @ " + ix.head : ix.state || "none");
+  }
+  async function saveNotes() { await run(api("PUT", pjUrl(true, "/notes"), { text: $("pj-notes").value })); await loadNotes(); msg("Notes saved."); }
+  async function reindex() { var d = await run(api("POST", pjUrl(true, "/index"))); msg(d.started ? "Indexing in the background…" : "Index is up to date or already running."); }
+
+  /* ---------- models ---------- */
+  async function loadModelsInfo() {
+    var d = await api("GET", "/api/models/info");
+    $("md-meta").textContent = (d.hardware || "?") + ", " + (d.date || "no date") + ", " + (d.source || "") + (d.running ? " · benchmark running…" : "");
+    var body = $("md-body"); body.textContent = "";
+    (d.results || []).forEach(function (r) {
+      var tr = el("tr");
+      var cells = r.error ? [r.model, "", "error: " + r.error, "", "", "", ""] : [r.model, (r.ctx || 4096) / 1024 + "k", r.short.gen_tok_s + " tok/s",
+        r.short.ttft_s + " s", r.full ? r.full.ttft_s + " s (" + r.full.prompt_tokens + " tok)" : "", (r.full || r.short).prompt_tok_s + " tok/s", r.vram_mb + " MB (" + r.gpu_share + "% on GPU)"];
+      cells.forEach(function (c) { tr.appendChild(el("td", "", String(c))); }); body.appendChild(tr);
+    });
+    $("md-budget").textContent = Object.keys(d.budgets || {}).map(function (m) { var b = d.budgets[m];
+      return m + ": system " + b.system + ", notes " + b.notes + ", code/refs " + b.refs + ", history " + b.history + ", reply " + b.reply; }).join(" | ");
+    $("md-bench").classList.toggle("hidden", !U.isAdmin());
+  }
+  async function rerunBench() { var d = await run(api("POST", "/api/admin/models/bench")); msg(d.started ? "Benchmark started; check back in ~10 minutes." : "Already running."); }
   async function saveProjects() {
     var items = JSON.parse($("pj-json").value);
     await run(api("PUT", "/api/admin/projects", { projects: items }));
@@ -270,6 +302,10 @@
     $("pr-slice").addEventListener("click", function () { prSlice($("pr-model").value.trim(), Number($("pr-build").value) || 0).catch(function () {}); });
     $("pr-send").addEventListener("click", function () { prSend().catch(function () {}); });
     $("pj-save").addEventListener("click", function () { saveProjects().catch(function (e) { msg(e.message); }); });
+    $("pj-notes-pick").addEventListener("change", function () { loadNotes().catch(function (e) { msg(e.message); }); });
+    $("pj-notes-save").addEventListener("click", function () { saveNotes().catch(function () {}); });
+    $("pj-reindex").addEventListener("click", function () { reindex().catch(function () {}); });
+    $("md-bench").addEventListener("click", function () { rerunBench().catch(function () {}); });
     $("pt-search").addEventListener("submit", function (ev) { ev.preventDefault(); searchParts().catch(function (e) { msg(e.message); }); });
   }
   wire();

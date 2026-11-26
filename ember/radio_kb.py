@@ -56,6 +56,147 @@ RADIO_SOURCES: list[tuple[str, str, str]] = [
     ("wiki-aprs", "Wikipedia - APRS", "https://en.wikipedia.org/wiki/Automatic_Packet_Reporting_System"),
 ]
 
+# AMSAT pack (satellites, phased arrays). Each entry: id, title (with licence), url, kind.
+# Kinds: html, tle, satnogs (transmitters JSON; url2 = satellites JSON), roff (man page), text, local (repo file).
+GH = "https://raw.githubusercontent.com"
+WIKI = "https://en.wikipedia.org/wiki/"
+AMSAT_SOURCES: list[dict[str, str]] = [
+    {
+        "id": "tle-celestrak-amateur",
+        "kind": "tle",
+        "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=amateur&FORMAT=tle",
+        "title": "CelesTrak amateur radio satellites TLEs (free orbital data; credit CelesTrak)",
+    },
+    {
+        "id": "tle-amsat-nasabare",
+        "kind": "tle",
+        "url": "https://www.amsat.org/tle/current/nasabare.txt",
+        "title": "AMSAT nasabare TLEs (orbital elements from public US data)",
+    },
+    {
+        "id": "satnogs-transmitters",
+        "kind": "satnogs",
+        "url": "https://db.satnogs.org/api/transmitters/?format=json",
+        "url2": "https://db.satnogs.org/api/satellites/?format=json",
+        "title": "SatNOGS DB - satellite frequencies, modes and status (CC BY-SA 4.0, Libre Space Foundation)",
+    },
+    {
+        "id": "amsat-guide",
+        "kind": "local",
+        "url": "docs/amsat/satellite-ops.md",
+        "title": "Ember guide - TLEs, pass prediction, Doppler, rigctld (IC-7300), rotctld, Gpredict, array pointing",
+    },
+    {
+        "id": "phased-array-guide",
+        "kind": "local",
+        "url": "docs/amsat/phased-array-tracking.md",
+        "title": "Ember guide - radar basics, monopulse, track filters, beam steering, satellite handoff",
+    },
+    {
+        "id": "hamlib-rigctld",
+        "kind": "roff",
+        "url": f"{GH}/Hamlib/Hamlib/master/doc/man1/rigctld.1",
+        "title": "Hamlib rigctld man page (GPL)",
+    },
+    {
+        "id": "hamlib-rigctl",
+        "kind": "roff",
+        "url": f"{GH}/Hamlib/Hamlib/master/doc/man1/rigctl.1",
+        "title": "Hamlib rigctl man page (GPL)",
+    },
+    {
+        "id": "hamlib-rotctld",
+        "kind": "roff",
+        "url": f"{GH}/Hamlib/Hamlib/master/doc/man1/rotctld.1",
+        "title": "Hamlib rotctld man page (GPL)",
+    },
+    {
+        "id": "hamlib-rotctl",
+        "kind": "roff",
+        "url": f"{GH}/Hamlib/Hamlib/master/doc/man1/rotctl.1",
+        "title": "Hamlib rotctl man page (GPL)",
+    },
+    {
+        "id": "gpredict-ic9700",
+        "kind": "text",
+        "url": f"{GH}/csete/gpredict/master/doc/notes/ic-9700.txt",
+        "title": "Gpredict notes - IC-9700 setup (GPL)",
+    },
+    {
+        "id": "gpredict-ic9100",
+        "kind": "text",
+        "url": f"{GH}/csete/gpredict/master/doc/notes/ic-9100.txt",
+        "title": "Gpredict notes - IC-9100 setup (GPL)",
+    },
+    {
+        "id": "gpredict-ic910",
+        "kind": "text",
+        "url": f"{GH}/csete/gpredict/master/doc/notes/ic-910.txt",
+        "title": "Gpredict notes - IC-910 setup (GPL)",
+    },
+    {
+        "id": "gpredict-ft847",
+        "kind": "text",
+        "url": f"{GH}/csete/gpredict/master/doc/notes/ft-847.txt",
+        "title": "Gpredict notes - FT-847 setup (GPL)",
+    },
+    {
+        "id": "gpredict-time",
+        "kind": "text",
+        "url": f"{GH}/csete/gpredict/master/doc/notes/time_keeping.txt",
+        "title": "Gpredict notes - time keeping (GPL)",
+    },
+    {
+        "id": "krakensdr-doa",
+        "kind": "text",
+        "url": f"{GH}/krakenrf/krakensdr_doa/main/README.md",
+        "title": "KrakenSDR DoA software README - coherent 5-channel SDR direction finding (GPL-3.0)",
+    },
+    {
+        "id": "pysdr-doa",
+        "kind": "html",
+        "url": "https://pysdr.org/content/doa.html",
+        "title": "PySDR - Beamforming and direction of arrival (CC BY-NC-SA 4.0, Dr. Marc Lichtman)",
+    },
+    {
+        "id": "pysdr-phaser",
+        "kind": "html",
+        "url": "https://pysdr.org/content/phaser.html",
+        "title": "PySDR - Phased arrays with the Phaser (CN0566) and Pluto (CC BY-NC-SA 4.0)",
+    },
+    {
+        "id": "pysdr-pluto",
+        "kind": "html",
+        "url": "https://pysdr.org/content/pluto.html",
+        "title": "PySDR - PlutoSDR in Python (CC BY-NC-SA 4.0)",
+    },
+] + [
+    {
+        "id": f"wiki-{slug.lower().replace('_', '-')[:30]}",
+        "kind": "html",
+        "url": WIKI + slug,
+        "title": f"Wikipedia - {slug.replace('_', ' ')} (CC BY-SA 4.0)",
+    }
+    for slug in (
+        "Amateur_radio_satellite",
+        "Two-line_element_set",
+        "Simplified_perturbations_models",
+        "Doppler_effect",
+        "Horizontal_coordinate_system",
+        "Phased_array",
+        "Beamforming",
+        "Beam_steering",
+        "Monopulse_radar",
+        "Continuous-wave_radar",
+        "Pulse-Doppler_radar",
+        "Radar_tracker",
+        "Alpha_beta_filter",
+        "Kalman_filter",
+        "Handover",
+        "Direction_finding",
+    )
+]
+
 SKIP_TAGS = frozenset({"script", "style", "nav", "header", "footer", "noscript", "svg", "form", "button"})
 BLOCK_TAGS = frozenset({"p", "div", "li", "tr", "br", "section", "article", "dd", "dt", "pre", "table"})
 HEADINGS = frozenset({"h1", "h2", "h3", "h4"})
@@ -142,7 +283,9 @@ def index_path(data_dir: Path) -> Path:
 class RadioKB:
     id = "radio"
     label = "Radio reference (offline)"
-    description = "US band plans, FCC Part 95/97, marine, aviation, NOAA weather, antennas"
+    description = (
+        "US band plans, FCC Part 95/97, marine, aviation, NOAA weather, antennas, AMSAT satellites, phased arrays"
+    )
     build_hint = "radio knowledge base is not built yet (run scripts/fetch_radio_kb.py while online)"
 
     def __init__(self, data_dir: Path) -> None:

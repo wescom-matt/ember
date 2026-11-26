@@ -55,6 +55,42 @@ WRITE_FILE_TOOL: dict[str, Any] = {
     },
 }
 
+EDIT_FILE_TOOL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "edit_file",
+        "description": "Change part of an existing file with SEARCH/REPLACE blocks or a small unified diff. "
+        "Preferred over write_file. The user sees the diff and confirms.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "patch": {
+                    "type": "string",
+                    "description": "<<<<<<< SEARCH\nexact old lines\n=======\nnew lines\n>>>>>>> REPLACE",
+                },
+                "reason": {"type": "string"},
+                "on": ON_HOST,
+            },
+            "required": ["path", "patch"],
+        },
+    },
+}
+
+UPDATE_NOTES_TOOL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "update_notes",
+        "description": "Replace this project's notes (purpose, board, pins, commands, key decisions). Shown as a diff.",
+        "parameters": {
+            "type": "object",
+            "properties": {"content": {"type": "string", "description": "The complete new notes, short"},
+                           "reason": {"type": "string"}},
+            "required": ["content"],
+        },
+    },
+}
+
 PRINTER_TOOL: dict[str, Any] = {
     "type": "function",
     "function": {
@@ -72,9 +108,11 @@ PRINTER_TOOL: dict[str, Any] = {
 }
 
 
-def offered_tools(has_printer: bool) -> list[dict[str, Any]]:
+def offered_tools(has_printer: bool, has_project: bool = False) -> list[dict[str, Any]]:
     """Few, small schemas: the default model has a 4k-token context."""
-    out = [RUN_COMMAND_TOOL, WRITE_FILE_TOOL]
+    out = [RUN_COMMAND_TOOL, EDIT_FILE_TOOL, WRITE_FILE_TOOL]
+    if has_project:
+        out.append(UPDATE_NOTES_TOOL)
     if has_printer:
         out.append(PRINTER_TOOL)
     return out

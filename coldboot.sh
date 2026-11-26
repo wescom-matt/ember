@@ -686,6 +686,15 @@ cmd_backup() {
       info "(not present: $rel)"
     fi
   done
+  local extra
+  for extra in "$HOME"/.local/share/ember/notes/*.md "$HOME/.local/share/ember/projects.json" \
+    "$HOME/.local/share/ember/model-bench.json"; do
+    [[ -f "$extra" ]] || continue
+    rel="${extra#"$HOME/"}"
+    install -d "$stage/home/$(dirname "$rel")"
+    cp -p "$extra" "$stage/home/$rel"
+    info "$rel"
+  done
   write_manifest "$stage"
   (cd "$stage" && find home MANIFEST.txt -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
   archive="$out/ember-coldboot-$(hostname)-$STAMP.tar.gz"

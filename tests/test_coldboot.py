@@ -297,7 +297,7 @@ def ollama() -> Any:
 def test_cbmodels_missing_check_create(ollama: dict[str, str]) -> None:
     spec = str(REPO / "coldboot/models.json")
     r = cbmodels("missing", "--spec", spec, env=ollama)
-    assert r.stdout.split("\n")[:2] == ["custom llama3.2-4k", "custom llama3.2-1b-4k"]
+    assert r.stdout.split("\n")[:3] == ["custom qwen3.5-9b-8k", "custom llama3.2-4k", "custom llama3.2-1b-4k"]
     r = cbmodels("check", "--spec", spec, env=ollama)
     assert r.returncode == 1
     assert "PASS model qwen3.5-9b-4k (num_ctx 4096, want 4096)" in r.stdout
@@ -312,7 +312,8 @@ def test_spec_and_pins_are_consistent() -> None:
     spec = json.loads((REPO / "coldboot/models.json").read_text())
     for item in spec["custom"]:
         assert item["from"] in spec["base"]
-        assert item["parameters"]["num_ctx"] == 4096
+        want = 8192 if item["name"].endswith("-8k") else 4096
+        assert item["parameters"]["num_ctx"] == want
     for line in (REPO / "coldboot/pins.txt").read_text().splitlines():
         if line and not line.startswith("#"):
             name, sha, rel, url = line.split()

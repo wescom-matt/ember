@@ -12,13 +12,15 @@ from __future__ import annotations
 import difflib
 import json
 import logging
+import re
 import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ember import config, printer, targets, tools
+from ember import build_errors, code_index, config, notes, ollama, patching, printer, targets, tools
+from ember.budget import fit, plan
 from ember.chat import _event
 from ember.classifier import RISKY, SAFE, Risk, classify
 from ember.db import connect, now
@@ -56,9 +58,27 @@ class AgentCtx:
     sources: list[dict[str, Any]] = field(default_factory=list)
     step: int = 0
     hosts: dict[str, int] = field(default_factory=dict)  # role -> target id (radio, build, printer)
+    project: str = ""
+    data_dir: str = ""
+    # small-step mode: the task, its steps, where we are and a one-line result per finished step
+    task: str = ""
+    steps: list[str] = field(default_factory=list)
+    step_idx: int = 0
+    step_results: list[str] = field(default_factory=list)
+    base_system: str = ""
+    step_text_at: int = 0
 
 
 MAX_FILE_CHARS = 64_000
+MAX_PLAN_STEPS = 6
+TOOL_NAMES = ("run_command", "write_file", "edit_file", "update_notes", "printer")
+PLAN_TOKENS = 200
+STEP_RESULT_CHARS = 200
+PLAN_PROMPT = (
+    "Break the user's task into at most 6 tiny steps. Each step needs one or two commands or one small file edit "
+    "(read a file, edit one function, build, fix the first error, flash). Reply with a numbered list only."
+)
+STATE_KEYS = ("project", "data_dir", "task", "steps", "step_idx", "step_results", "base_system", "step_text_at")
 MAX_DIFF_CHARS = 12_000
 
 
@@ -76,7 +96,8 @@ def tool_prompt(spec: TargetSpec | None, names: dict[str, str]) -> str:
         "esptool.py chirpc`, ports `ls /dev/ttyUSB* /dev/ttyACM*`. Build: `pio run`, `arduino-cli compile`. "
         "Fixing: `journalctl -u NAME -n 100 --no-pager`, `systemctl status NAME`; to restart or install use "
         "`sudo -n ...` (fails if a password is needed: then write a script for the user to run). "
-        "Change files with write_file (the user sees a diff). Radio uploads are done on the Radio screen. "
+        "Change existing files with edit_file (small SEARCH/REPLACE blocks; read the file first); write_file only "
+        "for new files. The user sees a diff. Radio uploads are done on the Radio screen. "
         "Flashing, installs, restarts and printer start/cancel ask the user. Never ask for passwords. "
         f"At most {config.MAX_TOOL_STEPS} steps, then summarize."
     )
@@ -92,7 +113,8 @@ def target_home(spec: TargetSpec) -> str:
 
 def to_context(ctx: AgentCtx) -> str:
     data = {"messages": ctx.messages, "text": ctx.text, "thinking": ctx.thinking,
-            "sources": ctx.sources, "step": ctx.step, "model": ctx.model, "think": ctx.think, "hosts": ctx.hosts}
+            "sources": ctx.sources, "step": ctx.step, "model": ctx.model, "think": ctx.think, "hosts": ctx.hosts,
+            **{k: getattr(ctx, k) for k in STATE_KEYS}}
     raw = json.dumps(data, ensure_ascii=False)
     if len(raw) > config.MAX_CONTEXT_CHARS:
         ctx.messages = ctx.messages[:1] + ctx.messages[-6:]
@@ -109,11 +131,19 @@ def from_context(ctx: AgentCtx, raw: str) -> None:
     ctx.sources = list(data.get("sources") or [])
     ctx.step = int(data.get("step") or 0)
     ctx.hosts = {str(k): int(v) for k, v in dict(data.get("hosts") or {}).items()}
+    ctx.project = str(data.get("project") or "")
+    ctx.data_dir = str(data.get("data_dir") or "")
+    ctx.task = str(data.get("task") or "")
+    ctx.steps = [str(x) for x in list(data.get("steps") or [])[:MAX_PLAN_STEPS]]
+    ctx.step_idx = int(data.get("step_idx") or 0)
+    ctx.step_results = [str(x) for x in list(data.get("step_results") or [])[:MAX_PLAN_STEPS]]
+    ctx.base_system = str(data.get("base_system") or "")
+    ctx.step_text_at = int(data.get("step_text_at") or 0)
 
 
 def _parse_call(call: Any) -> tuple[str, dict[str, Any]]:
     fn = call.get("function") if isinstance(call, dict) else None
-    if not isinstance(fn, dict) or fn.get("name") not in ("run_command", "write_file", "printer"):
+    if not isinstance(fn, dict) or fn.get("name") not in TOOL_NAMES:
         return "", {}
     args = fn.get("arguments")
     if isinstance(args, str):
@@ -124,7 +154,15 @@ def _parse_call(call: Any) -> tuple[str, dict[str, Any]]:
     return (str(fn["name"]), args) if isinstance(args, dict) else ("", {})
 
 
-def _record(ctx: AgentCtx, spec: TargetSpec, act: dict[str, Any], risk: Risk, status: str) -> int:
+@dataclass(frozen=True)
+class LocalSpec:
+    """Stand-in target for actions Ember does itself (project notes)."""
+
+    id: int = 0
+    name: str = "Ember (project notes)"
+
+
+def _record(ctx: AgentCtx, spec: TargetSpec | LocalSpec, act: dict[str, Any], risk: Risk, status: str) -> int:
     with connect(ctx.db_path) as conn:
         cur = conn.execute(
             "INSERT INTO actions(conversation_id, after_message_id, user_id, target_id, target_name, command, reason, "
@@ -157,6 +195,9 @@ def execute_action(ctx: AgentCtx, action_id: int, mode: str) -> tuple[dict[str, 
             "SELECT kind, command, payload, target_id FROM actions WHERE id = ?", (action_id,)
         ).fetchone()
         kind = str(row["kind"] or "command")
+    if kind == "notes":
+        return _save_notes(ctx, action_id, mode, json.loads(row["payload"] or "{}"))
+    with connect(ctx.db_path) as conn:
         try:
             spec, secret = targets.resolve(conn, ctx.vault, int(row["target_id"]), for_commands=kind != "printer")
         except (ValueError, VaultError) as exc:
@@ -176,6 +217,10 @@ def execute_action(ctx: AgentCtx, action_id: int, mode: str) -> tuple[dict[str, 
         result = run_ssh(spec, secret, str(row["command"]), config.COMMAND_TIMEOUT_SEC)
     secrets = [secret.value] if secret else []
     stored, for_model = _result_text(result, secrets)
+    if kind == "command":
+        short = build_errors.trim(redact(result.output, secrets), result.exit_code, _source_lookup(ctx))
+        if short:
+            for_model = short
     del secret, secrets
     status = "ran" if result.exit_code is not None else "failed"
     with connect(ctx.db_path) as conn:
@@ -184,6 +229,22 @@ def execute_action(ctx: AgentCtx, action_id: int, mode: str) -> tuple[dict[str, 
     _finish(ctx, action_id, status, mode, result.exit_code, stored)
     event = {"id": action_id, "status": status, "exit_code": result.exit_code, "output": stored}
     return event, for_model
+
+
+def _source_lookup(ctx: AgentCtx) -> Any:
+    if not ctx.project or not ctx.data_dir:
+        return None
+    return lambda rel: code_index.file_text(Path(ctx.data_dir), ctx.project, rel)
+
+
+def _save_notes(ctx: AgentCtx, action_id: int, mode: str, payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    try:
+        notes.save(Path(ctx.data_dir), ctx.project, str(payload.get("content") or ""))
+        status, code, text = "ran", 0, f"saved notes for {ctx.project}"
+    except (ValueError, OSError) as exc:
+        status, code, text = "failed", None, f"notes not saved: {str(exc)[:200]}"
+    _finish(ctx, action_id, status, mode, code, text)
+    return {"id": action_id, "status": status, "exit_code": code, "output": text}, text
 
 
 def _run_printer(spec: TargetSpec, code: str, payload: dict[str, Any]) -> RunResult:
@@ -209,6 +270,16 @@ def _write_file(spec: TargetSpec, secret: Any, path: str, content: str) -> RunRe
     if not done.ok:
         return RunResult(None, "", f"write failed: {done.error}", new_fingerprint=done.new_fingerprint)
     return RunResult(0, f"wrote {done.size} bytes to {path}", "", new_fingerprint=done.new_fingerprint)
+
+
+def read_file(spec: TargetSpec, secret: Any, path: str) -> str | None:
+    with tempfile.TemporaryDirectory() as tmp:
+        local = Path(tmp) / "cur"
+        try:
+            got = fetch_file(spec, secret, path, local, MAX_FILE_CHARS * 4)
+        except (OSError, ValueError):
+            return None
+        return local.read_text(encoding="utf-8", errors="replace") if got.ok else None
 
 
 def file_diff(spec: TargetSpec, secret: Any, path: str, content: str) -> str:
@@ -240,7 +311,7 @@ def _model_step(ctx: AgentCtx, allow_tools: bool, calls: list[Any]) -> Iterator[
     step_text: list[str] = []
     if ctx.text and not ctx.text.endswith("\n\n"):
         ctx.text += "\n\n"
-    offered = tools.offered_tools(bool(ctx.hosts.get("printer"))) if allow_tools else None
+    offered = tools.offered_tools(bool(ctx.hosts.get("printer")), bool(ctx.project)) if allow_tools else None
     for kind, piece in stream_chat(ctx.ollama_url, ctx.model, ctx.messages, ctx.think, offered):
         if kind == "tool_calls":
             calls.extend(piece)
@@ -259,8 +330,16 @@ def _model_step(ctx: AgentCtx, allow_tools: bool, calls: list[Any]) -> Iterator[
         ctx.messages.append({"role": "assistant", "content": "".join(step_text), "tool_calls": calls[:1]})
 
 
-def _plan(ctx: AgentCtx, name: str, args: dict[str, Any]) -> tuple[TargetSpec, dict[str, Any], Risk]:
+def _plan(ctx: AgentCtx, name: str, args: dict[str, Any]) -> tuple[TargetSpec | LocalSpec, dict[str, Any], Risk]:
     """Turn a tool call into (target, action, risk). Raises ValueError with a message for the model."""
+    if name == "update_notes":
+        if not ctx.project:
+            raise ValueError("no project is selected for this chat")
+        content = str(args.get("content") or "").strip()[: notes.MAX_NOTES_CHARS]
+        old = notes.get(Path(ctx.data_dir), ctx.project)["text"]
+        act = {"kind": "notes", "command": f"update notes for {ctx.project}", "payload": {"content": content},
+               "diff": cap(patching.diff("notes", old, content), MAX_DIFF_CHARS)}
+        return LocalSpec(), act, Risk(RISKY, ["changes the project notes (see the diff)"])
     if name == "printer":
         action = str(args.get("action") or "")
         if action not in printer.ACTIONS or not ctx.hosts.get("printer"):
@@ -279,6 +358,20 @@ def _plan(ctx: AgentCtx, name: str, args: dict[str, Any]) -> tuple[TargetSpec, d
         raise ValueError(f"no {on} host is set; ask the user to pick one")
     with connect(ctx.db_path) as conn:
         spec, secret = targets.resolve(conn, ctx.vault, target_id)
+    if name == "edit_file":
+        path = check_remote_path(str(args.get("path") or ""))
+        old = read_file(spec, secret, path)
+        if old is None:
+            raise ValueError(f"can't read {path}; check the path (use write_file for a new file)")
+        try:
+            new = patching.apply(path, old, str(args.get("patch") or ""))
+        except patching.PatchError as exc:
+            raise ValueError(str(exc)) from exc
+        if len(new) > MAX_FILE_CHARS:
+            raise ValueError("file is too large to edit this way")
+        act = {"kind": "write_file", "command": f"edit {path}", "payload": {"path": path, "content": new},
+               "diff": cap(patching.diff(path, old, new), MAX_DIFF_CHARS)}
+        return spec, act, Risk(RISKY, ["changes a file (see the diff)"])
     if name == "write_file":
         path = check_remote_path(str(args.get("path") or ""))
         content = str(args.get("content") or "")
@@ -320,16 +413,23 @@ def _handle_call(ctx: AgentCtx, call: Any) -> tuple[list[bytes], bool]:
 def run_agent(ctx: AgentCtx) -> Iterator[bytes]:
     paused = False
     try:
-        for _ in range(config.MAX_TOOL_STEPS + 1):
-            calls: list[Any] = []
-            yield from _model_step(ctx, ctx.step < config.MAX_TOOL_STEPS, calls)
-            if not calls or ctx.step >= config.MAX_TOOL_STEPS:
+        for _round in range(MAX_PLAN_STEPS + 1):
+            for _ in range(config.MAX_TOOL_STEPS + 1):
+                calls: list[Any] = []
+                yield from _model_step(ctx, ctx.step < config.MAX_TOOL_STEPS, calls)
+                if not calls or ctx.step >= config.MAX_TOOL_STEPS:
+                    break
+                events, paused = _handle_call(ctx, calls[0])
+                yield from events
+                if paused:
+                    yield _event("paused")
+                    return
+            if not ctx.steps:
                 break
-            events, paused = _handle_call(ctx, calls[0])
-            yield from events
-            if paused:
-                yield _event("paused")
-                return
+            more = _finish_step(ctx)
+            yield from more
+            if ctx.step_idx >= len(ctx.steps):
+                break
         yield _event("done")
     except (RuntimeError, ValueError, VaultError) as exc:
         LOG.warning("agent turn failed: %s", exc)
@@ -337,6 +437,72 @@ def run_agent(ctx: AgentCtx) -> Iterator[bytes]:
     finally:
         if not paused:
             _save_final(ctx)
+
+
+# ---------- small-step mode ----------
+def parse_steps(text: str) -> list[str]:
+    steps = []
+    for line in text.splitlines():
+        m = re.match(r"\s*(?:\d+[.)]|[-*])\s+(.+)", line)
+        if m and len(m.group(1).strip()) > 3:
+            steps.append(m.group(1).strip()[:200])
+    return steps[:MAX_PLAN_STEPS]
+
+
+def begin_small_steps(ctx: AgentCtx, task: str) -> Iterator[bytes]:
+    """Plan the task as tiny steps, then set up the first step's fresh context."""
+    ctx.task = task[:2000]
+    yield _event("status", text="Planning small steps…")
+    note = notes.get(Path(ctx.data_dir), ctx.project)["text"][:600] if ctx.project else ""
+    user = (f"Project notes:\n{note}\n\n" if note else "") + f"Task: {ctx.task}"
+    try:
+        reply = ollama.complete(ctx.ollama_url, ctx.model, [{"role": "system", "content": PLAN_PROMPT},
+                                                            {"role": "user", "content": user}], PLAN_TOKENS)
+    except RuntimeError as exc:
+        LOG.warning("planning failed: %s", exc)
+        reply = ""
+    ctx.steps = parse_steps(reply) or [ctx.task[:200]]
+    ctx.step_idx, ctx.step_results = 0, []
+    yield _event("plan", steps=ctx.steps)
+    yield from _start_step(ctx)
+
+
+def _start_step(ctx: AgentCtx) -> Iterator[bytes]:
+    n, step = ctx.step_idx, ctx.steps[ctx.step_idx]
+    budget = plan(ctx.model)
+    parts = [ctx.base_system]
+    if ctx.project:
+        parts.append(f"Project notes ({ctx.project}):\n" + fit(notes.get(Path(ctx.data_dir), ctx.project)["text"],
+                                                              budget.chars("notes")))
+        try:
+            chunks = code_index.search(Path(ctx.data_dir), ctx.ollama_url, ctx.project, f"{step} {ctx.task}",
+                                       budget.chars("refs"))
+        except (RuntimeError, OSError) as exc:
+            LOG.warning("code search failed: %s", exc)
+            chunks = []
+        if chunks:
+            parts.append(code_index.format_chunks(chunks))
+    done = "\n".join(f"{i + 1}. {ctx.steps[i]} -> {r}" for i, r in enumerate(ctx.step_results)) or "nothing yet"
+    user = (f"Overall task: {ctx.task}\nDone so far:\n{done}\n\nNow do ONLY step {n + 1} of {len(ctx.steps)}: "
+            f"{step}\nWhen this step is done, reply with one short line saying what you did or found.")
+    ctx.messages = [{"role": "system", "content": "\n\n".join(parts)}, {"role": "user", "content": user}]
+    ctx.step = 0
+    heading = f"{chr(10) * 2 if ctx.text else ''}**Step {n + 1}/{len(ctx.steps)}: {step}**\n\n"
+    ctx.text += heading
+    ctx.step_text_at = len(ctx.text)
+    yield _event("progress", index=n, total=len(ctx.steps), status="running", step=step)
+    yield _event("token", t=heading)
+
+
+def _finish_step(ctx: AgentCtx) -> list[bytes]:
+    result = " ".join(ctx.text[ctx.step_text_at :].split())[-STEP_RESULT_CHARS:] or "(no reply)"
+    ctx.step_results.append(result)
+    events = [_event("progress", index=ctx.step_idx, total=len(ctx.steps), status="done", step=ctx.steps[ctx.step_idx],
+                     result=result)]
+    ctx.step_idx += 1
+    if ctx.step_idx < len(ctx.steps):
+        events.extend(_start_step(ctx))
+    return events
 
 
 def _save_final(ctx: AgentCtx) -> None:
@@ -362,7 +528,8 @@ def resume(ctx: AgentCtx, action_id: int, run: bool) -> Iterator[bytes]:
     card = {"id": action_id, "target": row["target_name"], "command": row["command"], "reason": row["reason"],
             "risk": row["risk"], "risk_reasons": [r for r in row["risk_reasons"].split("; ") if r],
             "kind": row["kind"], "diff": row["diff"]}
-    tool_name = {"write_file": "write_file", "printer": "printer"}.get(str(row["kind"]), "run_command")
+    tool_name = {"write_file": "write_file", "printer": "printer", "notes": "update_notes"}.get(
+        str(row["kind"]), "run_command")
     if run:
         result, for_model = execute_action(ctx, action_id, "confirmed")
         yield _event("action", action={**card, **result, "mode": "confirmed"})

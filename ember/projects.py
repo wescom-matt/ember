@@ -127,11 +127,11 @@ def with_status(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{**p, **mirror_status(p["repo"])} for p in items]
 
 
-def prompt_text(data_dir: Path) -> str:
-    """Short project list for the agent: host, folder, board and commands."""
+def prompt_text(data_dir: Path, only: str = "") -> str:
+    """Short project list for the agent: host, folder, board and commands (one project if `only`)."""
     lines = []
     for p in load(data_dir):
-        if not p["commands"]:
+        if not p["commands"] or (only and p["name"] != only):
             continue
         where = f"{p['host']}:{p['folder']}" if p["host"] else "no host"
         if p["backup_host"]:

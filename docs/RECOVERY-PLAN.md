@@ -56,11 +56,10 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 - Ember's main jobs are now radio programming, code/build/flash, the 3D printer, and installing and fixing computers. Chat still works.
 - **Hosts:** each computer gets roles (radio, build, printer). You pick which one is the active radio or build host (Workshop → Hosts), for everyone or one chat.
 - **Radios:** CHIRP on the radio host. Always backs up first, shows a diff, and asks before uploading. Works for the Baofengs; the AnyTone D868UV and Kenwood TK-271 aren't supported by CHIRP; the IC-7300 is read-only.
-- **Radio library:** band plan, FCC rules and channel lists, offline, with sources.
+- **Radio library:** band plan, FCC rules and channel lists, offline, with sources (plus the AMSAT pack since 0.6.0).
 - **Printer:** ELEGOO Centauri Carbon 2 on the LAN (LAN-only mode + access code). Status and pause run straight away; start, resume, cancel and upload ask first. Slicing runs offline on the build host.
 - **Parts library:** openly licensed 3D models and iFixit repair guides on the P1. Search, slice, send to the printer.
 - **Fixing:** reads logs, edits config files (shows a diff and keeps a `.bak-ember` copy), restarts services, installs packages; risky steps always ask.
-- **Safety line:** no autonomous weapon targeting or firing code.
 
 **Phase 3c, off-grid project work (0.5.0)**
 - **Projects view:** each wescom-matt project with its build host, folder, board and commands. Ember runs them with the usual approval.
@@ -69,6 +68,12 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 - **Developer reference:** ESP32-S3, Arduino-ESP32, ESP-IDF, RadioLib, LoRaWAN, SX1262, Heltec V3/V4, AX.25, KISS, APRS, Direwolf, X.25.
 - **Outpost 2.0** starter for the Heltec V4-R8 (untested on hardware).
 - Ember is also a general chat assistant; offline it's slower and knows less.
+
+**Phase 3d, small-model helpers and AMSAT (0.6.0)**
+- Pick a **Project** in the chat: Ember adds the project's notes and the few most relevant pieces of code to each turn, inside the model's small memory.
+- **Small steps** breaks a job into tiny steps, each with a fresh small context. Long chats are summarized automatically. Build errors are trimmed to the first real error. File changes are small diffs you confirm.
+- **8k model** (`qwen3.5-9b-8k`): more memory, about twice as slow on full turns (sample: 102 s vs 50 s to the first word on the P1). 4k stays the default. Workshop → Models shows the numbers.
+- **AMSAT pack** in the radio library: satellite frequencies (SatNOGS), TLEs (CelesTrak, AMSAT), Doppler, Hamlib rig and rotator control, Gpredict, phased-array pointing, radar tracking basics and satellite handoff. Refresh TLEs when online.
 
 ### Important files
 
@@ -81,7 +86,8 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 | `~/.config/goose/config.yaml` | Goose settings |
 | `~/AI-AGENTS-README.md` | Short how-to for the agents on the P1 |
 | `~/.local/share/ember/radios/` | Your radio backups and edited images. **Not in the ColdBoot backup**: copy this folder to the USB yourself. |
-| `~/.local/share/ember/parts/`, `radio-kb/` | Parts library and radio library (rebuilt from the USB cache or re-downloaded) |
+| `~/.local/share/ember/parts/`, `radio-kb/` | Parts library and radio library with the AMSAT pack (rebuilt from the USB cache or re-downloaded) |
+| `~/.local/share/ember/notes/` | Project notes (in the backup); the code index next to it rebuilds itself |
 | `~/git/`, `~/.local/share/ember/dev-kb/` | Project mirrors and developer reference (rebuilt from the USB cache) |
 | `~/agent-stack-backup/` | The older rebuild kit (still works) |
 

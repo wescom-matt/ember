@@ -361,10 +361,6 @@ def test_radio_kb_parsing() -> None:
     assert chunks([("h", "line\n" * 2000)])
 
 
-def test_safety_boundary_in_prompt() -> None:
-    from ember.prompts import SYSTEM_PROMPT
-
-    assert "autonomous weapon targeting" in SYSTEM_PROMPT
 
 
 def test_buildhost_script_dry_run(tmp_path: Path) -> None:

@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from ember import __version__, auth, config, ollama, tools
+from ember import __version__, auth, config, ollama, projects, tools
 from ember.chat import Turn, run_turn
 from ember.config import Settings
 from ember.db import audit, connect, init_db, now
@@ -62,6 +62,8 @@ class MessageIn(BaseModel):
     think: bool = False
     exec: bool = False
     target_id: int | None = None
+    project: str = Field(default="", max_length=80)
+    small_steps: bool = False
 
 
 class UserIn(BaseModel):
@@ -218,6 +220,8 @@ def register_chat_routes(app: FastAPI) -> None:
         kb = _check_kb(request, body.kb)
         model = _check_model(request, body.model)
         think = body.think and _thinks(settings.ollama_url, model)
+        if body.project and not any(p["name"] == body.project for p in projects.load(settings.data_dir)):
+            raise HTTPException(status_code=400, detail="unknown project")
         with connect(_db(request)) as conn:
             conv = _own_conversation(conn, conv_id, user["id"])
             count = conn.execute("SELECT COUNT(*) FROM messages WHERE conversation_id = ?", (conv_id,)).fetchone()[0]
@@ -237,11 +241,13 @@ def register_chat_routes(app: FastAPI) -> None:
             if title == "New chat":
                 title = " ".join(body.content.split())[:60] or "New chat"
             conn.execute(
-                "UPDATE conversations SET title = ?, model = ?, kb = ?, exec_on = ?, target_id = ?, updated_at = ? "
-                "WHERE id = ?",
-                (title, model, body.kb, int(body.exec), body.target_id, t, conv_id),
+                "UPDATE conversations SET title = ?, model = ?, kb = ?, exec_on = ?, target_id = ?, updated_at = ?, "
+                "project = ?, small_steps = ? WHERE id = ?",
+                (title, model, body.kb, int(body.exec), body.target_id, t, body.project, int(body.small_steps),
+                 conv_id),
             )
-        turn = Turn(conversation_id=conv_id, model=model, kb_id=body.kb, think=think, question=body.content)
+        turn = Turn(conversation_id=conv_id, model=model, kb_id=body.kb, think=think, question=body.content,
+                    project=body.project, small_steps=body.small_steps, data_dir=settings.data_dir)
         if body.exec:
             stream = start_exec_turn(request, user["id"], turn, kb, body.target_id, user_msg_id)
         else:

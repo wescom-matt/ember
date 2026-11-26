@@ -24,14 +24,14 @@ You end up with:
 
 | On the USB | What it is | Size |
 |---|---|---|
-| `coldboot-cache/models/` | Ollama models: qwen3.5:9b, llama3.2, llama3.2:1b, nomic-embed-text and the 3 custom 4k models | ~10.2 GB |
+| `coldboot-cache/models/` | Ollama models: qwen3.5:9b, llama3.2, llama3.2:1b, nomic-embed-text, the 3 custom 4k models and `qwen3.5-9b-8k` (a recipe on the same base, no extra download) | ~10.2 GB |
 | `coldboot-cache/ollama/` | Ollama 0.40.14 (only used if there is no Nomad) | ~1.5 GB |
 | `coldboot-cache/goose/` | Goose 1.59.1 program and desktop .deb | ~0.35 GB |
 | `coldboot-cache/python/` | uv, Python 3.12 and Open Interpreter's packages | ~0.2 GB |
 | `coldboot-cache/ember-wheels/` | Ember's Python packages | ~0.03 GB |
 | `coldboot-cache/buildtools/` | CHIRP, PlatformIO + ESP32 packages, esptool, arduino-cli, OrcaSlicer and ElegooSlicer, Centauri Carbon 2 profiles | ~5.4 GB |
 | `coldboot-cache/parts/` | Parts library: openly licensed 3D models and iFixit guides (cap with `--parts-gb N`, default 3) | ~1 GB |
-| `coldboot-cache/radio-kb/` | Radio reference library (band plan, FCC rules, channel lists) | ~7 MB |
+| `coldboot-cache/radio-kb/` | Radio reference library (band plan, FCC rules, channel lists) and the AMSAT pack (SatNOGS frequencies, TLEs, Hamlib/Gpredict docs, phased-array and radar guides) | ~20 MB |
 | `coldboot-cache/buildhost/pio-envs/` | Outpost's PlatformIO cores (pioarduino 55.03.312, espressif32 7.1.3, native) | ~7.5 GB |
 | `coldboot-cache/projects/` | Library versions, Python wheels, npm cache, Node, NuGet packages, `MANIFEST.json` | ~0.7 GB |
 | `coldboot-cache/repos/` | `git bundle` of all 12 wescom-matt repos, plus issues and PRs | ~0.06 GB |
@@ -39,7 +39,7 @@ You end up with:
 | `coldboot-cache/arduino/` | Arduino ESP32 core, only with `--with-arduino-core` (then a 64 GB disk is required) | ~9 GB |
 | `coldboot-cache/ember.bundle` | A full copy of this repo (in case GitHub is unreachable) | small |
 | `coldboot-cache/SHA256SUMS` | Checksums; install checks every file | small |
-| `backups/ember-coldboot-*.tar.gz` + `.sha256` | Ember's database (users, chats, targets, saved logins), its **secret key**, TLS cert, Goose/Interpreter settings | small |
+| `backups/ember-coldboot-*.tar.gz` + `.sha256` | Ember's database (users, chats, targets, saved logins), its **secret key**, TLS cert, Goose/Interpreter settings, project notes, projects list, model speed sample | small |
 
 > **WARNING: the backup contains Ember's secret key.** With it, anyone can read the
 > SSH passwords and keys Ember stores. Keep that USB disk in a drawer. Do not
@@ -172,3 +172,5 @@ its files when you run `coldboot cache`.
 ## Projects after a rebuild
 
 `./coldboot.sh install --cache DIR` imports the repo bundles into `~/git` (it only adds; offline work is never overwritten) and copies the developer reference. Build hosts get the PlatformIO cores with `install-buildhost.sh --cache DIR`. To refresh only the project part of the USB: `./coldboot.sh cache DIR --only-projects`. Details: README section 13.
+
+After a rebuild the code index (`~/.local/share/ember/code-index/`) rebuilds itself from `~/git` the first time you pick a project in the chat. TLEs in the cached radio library go stale within days: run `.venv/bin/python scripts/fetch_radio_kb.py --only amsat` once you're online.

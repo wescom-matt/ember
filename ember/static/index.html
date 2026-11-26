@@ -68,10 +68,14 @@
           <label class="toggle" title="Let thinking models reason first (slower)"><input id="think-toggle" type="checkbox"><span>Think</span></label>
           <label id="exec-wrap" class="toggle exec hidden" title="Let Ember run commands on the selected target"><input id="exec-toggle" type="checkbox"><span>Commands</span></label>
           <select id="target-select" class="hidden" title="Where commands run"></select>
+          <select id="project-select" title="Project: loads its notes and relevant code"></select>
+          <label class="toggle" title="Plan the task as tiny steps, each with a fresh small context (needs Commands)"><input id="steps-toggle" type="checkbox"><span>Small steps</span></label>
           <span class="spacer"></span>
           <button id="send-btn" type="submit" class="send" title="Send (Enter)"><svg class="ico"><use href="#i-up"/></svg></button>
         </div>
       </div>
+      <div id="model-warn" class="model-warn hidden"></div>
+      <div id="budget" class="budget muted"></div>
       <p class="hint">Runs fully offline on this computer. Answers can be wrong; check anything safety-critical.</p>
     </form>
   </section>
@@ -124,7 +128,7 @@
 </dialog>
 
 <dialog id="ws-dlg" class="dlg wide">
-  <div class="dlg-head"><div class="tabs"><button class="wtab tab active" data-wtab="radio">Radio</button><button class="wtab tab" data-wtab="printer">Printer &amp; slicing</button><button class="wtab tab" data-wtab="parts">Parts library</button><button class="wtab tab" data-wtab="projects">Projects</button><button class="wtab tab" data-wtab="hosts">Hosts</button></div><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-head"><div class="tabs"><button class="wtab tab active" data-wtab="radio">Radio</button><button class="wtab tab" data-wtab="printer">Printer &amp; slicing</button><button class="wtab tab" data-wtab="parts">Parts library</button><button class="wtab tab" data-wtab="projects">Projects</button><button class="wtab tab" data-wtab="hosts">Hosts</button><button class="wtab tab" data-wtab="models">Models</button></div><button class="btn ghost small" data-close>Close</button></div>
   <section id="wtab-radio" class="tabpane">
     <div class="add-user"><select id="rd-host" title="Radio host (has the cable)"></select><button id="rd-ports" type="button" class="btn small">Find ports</button><select id="rd-port-pick"><option value="">port (Find ports)</option></select><span id="rd-helper" class="muted small-text"></span></div>
     <div id="rd-list"></div>
@@ -146,7 +150,18 @@
   <section id="wtab-projects" class="tabpane hidden">
     <p class="muted">Each project's build host, folder, board and commands. "Ask Ember" puts the command in the chat; running it still goes through the normal approval. Offline copies: <span id="pj-git"></span>.</p>
     <div id="pj-list"></div>
+    <details id="pj-notes-box"><summary>Project notes (loaded first into every chat about the project)</summary>
+      <div class="add-user"><select id="pj-notes-pick"></select><span id="pj-index" class="muted small-text"></span><button id="pj-reindex" class="btn small hidden" type="button">Re-index code</button></div>
+      <textarea id="pj-notes" rows="12" spellcheck="false" class="json-edit" maxlength="2000"></textarea>
+      <button id="pj-notes-save" class="btn small primary hidden" type="button">Save notes</button> <span id="pj-notes-state" class="muted small-text"></span>
+    </details>
     <details id="pj-admin" class="hidden"><summary>Edit projects (admin, JSON)</summary><textarea id="pj-json" rows="16" spellcheck="false" class="json-edit"></textarea><button id="pj-save" class="btn small primary" type="button">Save</button></details>
+  </section>
+  <section id="wtab-models" class="tabpane hidden">
+    <p class="muted">Speed sample measured on the P1 (<span id="md-meta"></span>). Actual speed varies with prompt length, other loaded models and heat. "Full" fills about 80% of the model's memory.</p>
+    <table class="users"><thead><tr><th>Model</th><th>Memory</th><th>Generation</th><th>First token (short)</th><th>First token (full)</th><th>Reading speed</th><th>GPU</th></tr></thead><tbody id="md-body"></tbody></table>
+    <p class="muted">Context split per turn: <span id="md-budget"></span></p>
+    <button id="md-bench" class="btn small hidden" type="button">Re-run benchmark (admin, takes ~10 minutes)</button>
   </section>
   <section id="wtab-hosts" class="tabpane hidden">
     <p class="muted">Which computer does what. The default applies to everyone (admin); "this chat" overrides it for the open chat.</p>

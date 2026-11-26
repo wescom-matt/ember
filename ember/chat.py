@@ -7,9 +7,11 @@ import logging
 import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from ember import config
+from ember.context import prepare
 from ember.db import connect, now
 from ember.kb import DEFAULT_TOP_K, KnowledgeBase, format_context
 from ember.ollama import stream_chat
@@ -25,6 +27,9 @@ class Turn:
     kb_id: str
     think: bool
     question: str
+    project: str = ""
+    small_steps: bool = False
+    data_dir: Path | None = None
 
 
 def history(conn: sqlite3.Connection, conversation_id: int) -> list[dict[str, str]]:
@@ -78,14 +83,27 @@ def run_turn(db_path: Any, ollama_url: str, kb: KnowledgeBase | None, turn: Turn
         yield _event("notice", text=kb_error)
     if kb is not None:
         yield _event("sources", sources=hits)
-    with connect(db_path) as conn:
-        past = history(conn, turn.conversation_id)
+    messages = build_messages([], context)
+    if turn.data_dir is None:
+        with connect(db_path) as conn:
+            messages = build_messages(history(conn, turn.conversation_id), context)
+    else:
+        if turn.project:
+            yield _event("status", text=f"Loading {turn.project} notes and code…")
+        prep = prepare(db_path, turn.data_dir, ollama_url, turn.model, turn.conversation_id, turn.project,
+                       turn.question, SYSTEM_PROMPT, context)
+        messages = prep.messages
+        for text in prep.notices:
+            yield _event("notice", text=text)
+        if prep.summarized:
+            yield _event("notice", text="Older messages were summarized to fit the model's memory.")
+        yield _event("budget", usage=prep.usage, code=[_chunk_ref(c) for c in prep.chunks])
     reply: list[str] = []
     thinking: list[str] = []
     sizes = [0, 0]
     try:
         yield _event("status", text="Thinking…" if turn.think else "Writing…")
-        for kind, piece in stream_chat(ollama_url, turn.model, build_messages(past, context), turn.think):
+        for kind, piece in stream_chat(ollama_url, turn.model, messages, turn.think):
             idx = 0 if kind == "content" else 1
             if sizes[idx] + len(piece) > config.MAX_REPLY_CHARS:
                 yield _event("notice", text="Reply hit the length limit and was cut off.")
@@ -99,6 +117,10 @@ def run_turn(db_path: Any, ollama_url: str, kb: KnowledgeBase | None, turn: Turn
         yield _event("error", message="The model stopped with an error. Check that Ollama is running.")
     finally:
         _save_reply(db_path, turn, "".join(reply), "".join(thinking), hits)
+
+
+def _chunk_ref(c: dict[str, Any]) -> dict[str, Any]:
+    return {"path": c["path"], "start": c["start"], "end": c["end"], "score": c["score"]}
 
 
 def _save_reply(db_path: Any, turn: Turn, text: str, thinking: str, hits: list[dict[str, Any]]) -> None:

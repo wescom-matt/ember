@@ -201,6 +201,10 @@ def init_db(path: Path) -> None:
         _add_column(conn, "actions", "kind", "TEXT NOT NULL DEFAULT 'command'")
         _add_column(conn, "actions", "payload", "TEXT NOT NULL DEFAULT ''")
         _add_column(conn, "actions", "diff", "TEXT NOT NULL DEFAULT ''")
+        _add_column(conn, "conversations", "project", "TEXT NOT NULL DEFAULT ''")
+        _add_column(conn, "conversations", "small_steps", "INTEGER NOT NULL DEFAULT 0")
+        _add_column(conn, "conversations", "summary", "TEXT NOT NULL DEFAULT ''")
+        _add_column(conn, "conversations", "summary_upto", "INTEGER NOT NULL DEFAULT 0")
         conn.execute(
             "INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
             (str(SCHEMA_VERSION),),
@@ -222,6 +226,10 @@ _ALLOWED_COLUMNS = {
     ("actions", "kind"),
     ("actions", "payload"),
     ("actions", "diff"),
+    ("conversations", "project"),
+    ("conversations", "small_steps"),
+    ("conversations", "summary"),
+    ("conversations", "summary_upto"),
 }
 
 

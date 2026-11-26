@@ -1,0 +1,54 @@
+{
+ "date": "2026-11-25",
+ "host": "think-pad-p1",
+ "hardware": "Quadro T1000 with Max-Q Design 4 GB",
+ "note": "Sample from one run on this machine; actual speed varies with prompt length and load.",
+ "results": [
+  {
+   "model": "qwen3.5-9b-4k",
+   "cold_start_s": 6.6,
+   "short": {
+    "prompt_tokens": 78,
+    "ttft_s": 6.6,
+    "gen_tok_s": 4.6,
+    "prompt_tok_s": 38.5,
+    "total_s": 38.9
+   },
+   "full": {
+    "prompt_tokens": 3292,
+    "ttft_s": 50.1,
+    "gen_tok_s": 4.4,
+    "prompt_tok_s": 65.8,
+    "total_s": 82.5
+   },
+   "ctx": 4096,
+   "vram_mb": 1971,
+   "model_mb": 5906,
+   "gpu_share": 33,
+   "gpu_used_delta_mb": 2923
+  },
+  {
+   "model": "qwen3.5-9b-8k",
+   "cold_start_s": 6.7,
+   "short": {
+    "prompt_tokens": 78,
+    "ttft_s": 6.7,
+    "gen_tok_s": 4.4,
+    "prompt_tok_s": 37.9,
+    "total_s": 40.2
+   },
+   "full": {
+    "prompt_tokens": 6549,
+    "ttft_s": 102.2,
+    "gen_tok_s": 4.0,
+    "prompt_tok_s": 64.1,
+    "total_s": 138.4
+   },
+   "ctx": 8192,
+   "vram_mb": 1882,
+   "model_mb": 5991,
+   "gpu_share": 31,
+   "gpu_used_delta_mb": 2833
+  }
+ ]
+}

@@ -4,6 +4,8 @@
   "custom": [
     {"name": "qwen3.5-9b-4k", "from": "qwen3.5:9b",
      "parameters": {"num_ctx": 4096, "presence_penalty": 1.5, "temperature": 1, "top_k": 20, "top_p": 0.95}},
+    {"name": "qwen3.5-9b-8k", "from": "qwen3.5:9b",
+     "parameters": {"num_ctx": 8192, "presence_penalty": 1.5, "temperature": 1, "top_k": 20, "top_p": 0.95}},
     {"name": "llama3.2-4k", "from": "llama3.2:latest",
      "parameters": {"num_ctx": 4096, "stop": ["<|start_header_id|>", "<|end_header_id|>", "<|eot_id|>"]}},
     {"name": "llama3.2-1b-4k", "from": "llama3.2:1b",

@@ -6,6 +6,7 @@ import json
 import logging
 import sqlite3
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -13,11 +14,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ember import config, ollama, printer, projects, roles, targets, tools
-from ember.agent import AgentCtx, resume, run_agent, tool_prompt
-from ember.chat import Turn, _event, _retrieve, build_messages, history, run_turn
+from ember.agent import AgentCtx, begin_small_steps, resume, run_agent, tool_prompt
+from ember.budget import fit, plan
+from ember.chat import Turn, _chunk_ref, _event, _retrieve, run_turn
+from ember.context import prepare
 from ember.db import audit, connect
 from ember.deps import Admin, User, _db, _own_conversation
 from ember.kb import KnowledgeBase
+from ember.prompts import SYSTEM_PROMPT
 from ember.runner import cap, redact, run_local, run_ssh
 from ember.vault import Vault, VaultError
 
@@ -113,8 +117,10 @@ def start_exec_turn(
         why = f"{turn.model} can't run commands (no tool support); try qwen3.5-9b-4k. Answering only."
         return _fallback(turn, kb, request, why)
     ctx = AgentCtx(settings.db_path, settings.ollama_url, _vault(request), user_id, turn.conversation_id,
-                   after_id, turn.model, turn.think, spec.id if spec else 0, hosts=hosts)
-    return _exec_stream(ctx, kb, turn.question, tool_prompt(spec, names) + projects.prompt_text(settings.data_dir))
+                   after_id, turn.model, turn.think, spec.id if spec else 0, hosts=hosts, project=turn.project,
+                   data_dir=str(settings.data_dir))
+    prompt = tool_prompt(spec, names) + projects.prompt_text(settings.data_dir, turn.project)
+    return _exec_stream(ctx, kb, turn, prompt)
 
 
 def _target_name(conn: sqlite3.Connection, target_id: int) -> str:
@@ -122,20 +128,30 @@ def _target_name(conn: sqlite3.Connection, target_id: int) -> str:
     return str(row["name"]) if row else ""
 
 
-def _exec_stream(ctx: AgentCtx, kb: KnowledgeBase | None, question: str, prompt: str) -> Iterator[bytes]:
+def _exec_stream(ctx: AgentCtx, kb: KnowledgeBase | None, turn: Turn, prompt: str) -> Iterator[bytes]:
     if kb is not None:
         yield _event("status", text=f"Searching {kb.label}…")
-    hits, context, kb_error = _retrieve(kb, question)
+    hits, context, kb_error = _retrieve(kb, turn.question)
     if kb_error:
         yield _event("notice", text=kb_error)
     if kb is not None:
         yield _event("sources", sources=hits)
-    with connect(ctx.db_path) as conn:
-        past = history(conn, ctx.conversation_id)
-    messages: list[dict[str, Any]] = list(build_messages(past, context))
-    messages[0]["content"] += prompt
-    ctx.messages = messages
     ctx.sources = hits
+    system = SYSTEM_PROMPT + prompt
+    if turn.small_steps:
+        ctx.base_system = fit(system, plan(ctx.model).chars("system"))
+        yield from begin_small_steps(ctx, turn.question)
+    else:
+        if turn.project:
+            yield _event("status", text=f"Loading {turn.project} notes and code…")
+        prep = prepare(ctx.db_path, Path(ctx.data_dir), ctx.ollama_url, ctx.model, ctx.conversation_id,
+                       turn.project, turn.question, system, context)
+        for text in prep.notices:
+            yield _event("notice", text=text)
+        if prep.summarized:
+            yield _event("notice", text="Older messages were summarized to fit the model's memory.")
+        yield _event("budget", usage=prep.usage, code=[_chunk_ref(c) for c in prep.chunks])
+        ctx.messages = prep.messages
     yield _event("status", text="Working…")
     yield from run_agent(ctx)
 

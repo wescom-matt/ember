@@ -88,3 +88,15 @@ def stream_chat(
                 yield ("tool_calls", calls[:4])
         if item.get("done"):
             return
+
+
+def complete(base_url: str, model: str, messages: list[dict[str, Any]], max_tokens: int) -> str:
+    """One non-streaming reply (used for summaries and small-step plans). No thinking, no tools."""
+    payload = {"model": model, "messages": messages, "stream": False, "think": False, "keep_alive": "10m",
+               "options": {"num_predict": max_tokens}}
+    data = call_json(f"{base_url}/api/chat", payload, config.OLLAMA_STREAM_IDLE_TIMEOUT_SEC)
+    msg = data.get("message")
+    text = msg.get("content") if isinstance(msg, dict) else None
+    if not isinstance(text, str):
+        raise RuntimeError("Ollama returned no reply")
+    return text.strip()

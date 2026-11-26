@@ -52,7 +52,7 @@
     $("app-view").classList.remove("hidden");
     $("me-name").textContent = me.username;
     $("admin-btn").classList.toggle("hidden", !me.is_admin);
-    await Promise.all([loadModels(), loadKbs(), loadChats(), loadTargets()]);
+    await Promise.all([loadModels(), loadKbs(), loadChats(), loadTargets(), loadProjectPicker()]);
     newChat();
   }
 
@@ -62,12 +62,52 @@
       state.models = d.models; state.defaultModel = d.default;
     } catch (e) { state.models = []; state.defaultModel = ""; notice("Ollama is not responding: " + e.message); }
     var sel = $("model-select");
+    try { state.bench = await api("GET", "/api/models/info"); } catch (e) { state.bench = { results: [] }; }
     sel.textContent = "";
     state.models.forEach(function (m) {
-      var o = el("option", "", m.name.replace(/:latest$/, "") + (m.name === state.defaultModel ? " (default)" : ""));
+      var b = benchFor(m.name);
+      var o = el("option", "", m.name.replace(/:latest$/, "") + (m.name === state.defaultModel ? " (default)" : "") + (b ? " · ~" + b.short.gen_tok_s + " tok/s" : ""));
       o.value = m.name; sel.appendChild(o);
     });
     sel.value = state.defaultModel;
+    showModelWarn();
+  }
+
+  function benchFor(name) {
+    var base = String(name || "").replace(/:latest$/, "");
+    return ((state.bench && state.bench.results) || []).filter(function (r) { return r.model === base && !r.error; })[0] || null;
+  }
+
+  function showModelWarn() {
+    var box = $("model-warn"), name = $("model-select").value, m = /-(\d+)k(:|$)/.exec(name || "");
+    var big = m && Number(m[1]) >= 8;
+    box.classList.toggle("hidden", !big);
+    if (!big) return;
+    var b8 = benchFor(name), b4 = benchFor("qwen3.5-9b-4k"), B = state.bench || {};
+    var t = "Bigger memory (" + m[1] + "k): it fits more code and history, but long turns are slower. Use it when 4k runs out.";
+    if (b8 && b4 && b8.full && b4.full) {
+      t += " Sample on the P1 (" + (B.hardware || "") + ", " + (B.date || "") + "): a full 4k turn takes ~" + b4.full.ttft_s + " s to the first word, a full 8k turn ~" +
+        b8.full.ttft_s + " s; writing ~" + b4.full.gen_tok_s + " vs ~" + b8.full.gen_tok_s + " tokens/s. Actual speed varies.";
+    }
+    box.textContent = t;
+  }
+
+  async function loadProjectPicker() {
+    var sel = $("project-select"); sel.textContent = "";
+    var o = el("option", "", "No project"); o.value = ""; sel.appendChild(o);
+    try {
+      var d = await api("GET", "/api/projects");
+      d.projects.forEach(function (p) { var q = el("option", "", p.name); q.value = p.name; sel.appendChild(q); });
+    } catch (e) { console.warn(e); }
+  }
+
+  function showBudget(u, code) {
+    if (!u) { $("budget").textContent = ""; return; }
+    var k = function (n) { return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n); };
+    var parts = [["sys", u.system], ["notes", u.notes], ["code/refs", u.refs], ["history", u.history], ["reply", u.reply]];
+    $("budget").textContent = "Context ~" + k(u.total) + " / " + k(u.ctx) + " tokens: " +
+      parts.filter(function (p) { return p[1]; }).map(function (p) { return p[0] + " " + k(p[1]); }).join(" · ") +
+      (code && code.length ? " · code: " + code.map(function (c) { return c.path.split("/").pop() + ":" + c.start; }).join(", ") : "");
   }
 
   async function loadKbs() {
@@ -115,7 +155,8 @@
     $("model-select").value = state.defaultModel;
     $("kb-select").value = state.defaultKb || "none";
     $("exec-toggle").checked = false;
-    syncExecControls();
+    $("project-select").value = ""; $("steps-toggle").checked = false; showBudget(null);
+    syncExecControls(); showModelWarn();
     renderChatList();
     closeSidebar();
     $("input").focus();
@@ -129,6 +170,8 @@
     if (state.models.some(function (m) { return m.name === d.conversation.model; })) $("model-select").value = d.conversation.model;
     $("kb-select").value = d.conversation.kb;
     $("exec-toggle").checked = !!d.conversation.exec_on && state.caps.exec;
+    $("project-select").value = d.conversation.project || ""; $("steps-toggle").checked = !!d.conversation.small_steps;
+    showBudget(null); showModelWarn();
     if (d.conversation.target_id && state.targets.some(function (t) { return t.id === d.conversation.target_id; })) {
       $("target-select").value = String(d.conversation.target_id);
     }
@@ -260,6 +303,15 @@
     else if (ev.type === "error") notice(ev.message, a.extra);
     else if (ev.type === "action" || ev.type === "confirm") { a.status.textContent = ""; placeAction(a, ev.action); }
     else if (ev.type === "paused") { a.paused = true; a.status.textContent = ""; }
+    else if (ev.type === "budget") showBudget(ev.usage, ev.code);
+    else if (ev.type === "plan") {
+      a.plan = el("ol", "plan");
+      (ev.steps || []).forEach(function (s) { a.plan.appendChild(el("li", "", s)); });
+      a.extra.appendChild(a.plan);
+    } else if (ev.type === "progress" && a.plan && a.plan.children[ev.index]) {
+      a.plan.children[ev.index].className = ev.status;
+      a.status.textContent = "Step " + (ev.index + 1) + " of " + ev.total + (ev.status === "done" ? " done" : "…");
+    }
   }
 
   function placeAction(a, action) {
@@ -291,7 +343,8 @@
     var execOn = state.caps.exec && $("exec-toggle").checked && !!$("target-select").value;
     return streamInto("/api/conversations/" + id + "/messages", {
       content: text, model: $("model-select").value, kb: $("kb-select").value, think: $("think-toggle").checked,
-      exec: execOn, target_id: execOn ? Number($("target-select").value) : null
+      exec: execOn, target_id: execOn ? Number($("target-select").value) : null,
+      project: $("project-select").value, small_steps: execOn && $("steps-toggle").checked
     });
   }
 
@@ -717,6 +770,7 @@
     $("nt-kind").addEventListener("change", syncTargetForm);
     $("nc-kind").addEventListener("change", function () { $("nc-pass").classList.toggle("hidden", $("nc-kind").value !== "password"); });
     $("exec-toggle").addEventListener("change", function () { syncExecControls(); saveChatExec(); });
+    $("model-select").addEventListener("change", showModelWarn);
     $("target-select").addEventListener("change", saveChatExec);
     $("pw-btn").addEventListener("click", function () { $("pw-msg").textContent = ""; $("pw-dlg").showModal(); });
     $("add-user").addEventListener("submit", addUserSubmit);
