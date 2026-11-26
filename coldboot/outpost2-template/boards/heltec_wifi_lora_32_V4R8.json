@@ -1,0 +1,39 @@
+{
+  "build": {
+    "arduino": {
+      "partitions": "default_16MB.csv",
+      "memory_type": "qio_opi"
+    },
+    "core": "esp32",
+    "extra_flags": [
+      "-DARDUINO_heltec_wifi_lora_32_V4",
+      "-DWIFI_LORA_32_V4",
+      "-DHELTEC_WIFI_LORA_32_V4R8",
+      "-DRADIO_CHIP_SX1262",
+      "-DBOARD_HAS_PSRAM",
+      "-DARDUINO_USB_MODE=1",
+      "-DARDUINO_RUNNING_CORE=1",
+      "-DARDUINO_EVENT_RUNNING_CORE=1"
+    ],
+    "f_cpu": "240000000L",
+    "f_flash": "80000000L",
+    "flash_mode": "qio",
+    "psram_type": "opi",
+    "hwids": [["0x303A", "0x1001"]],
+    "mcu": "esp32s3",
+    "variant": "heltec_wifi_lora_32_V4R8"
+  },
+  "connectivity": ["wifi", "bluetooth", "lora"],
+  "debug": {"openocd_target": "esp32s3.cfg"},
+  "frameworks": ["arduino", "espidf"],
+  "name": "Heltec WiFi LoRa 32 V4-R8 (ESP32-S3R8, 16 MB flash, 8 MB octal PSRAM) - Ember custom board",
+  "upload": {
+    "flash_size": "16MB",
+    "maximum_ram_size": 327680,
+    "maximum_size": 16777216,
+    "require_upload_port": true,
+    "speed": 921600
+  },
+  "url": "https://wiki.heltec.org/docs/devices/open-source-hardware/esp32-series/lora-32/wifi-lora-32-v4_r8_board/",
+  "vendor": "Heltec"
+}

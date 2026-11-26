@@ -17,9 +17,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from ember import parts, printer, radio, roles, targets, tools
+from ember import parts, printer, projects, radio, roles, targets, tools
 from ember.db import audit, connect, now
-from ember.deps import User, _db
+from ember.deps import Admin, User, _db
 from ember.runner import (
     RunResult,
     Secret,
@@ -542,7 +542,29 @@ def register_parts_routes(app: FastAPI) -> None:
         return {"host": build.name, "gcode": f"{outdir}{sep}plate_1.gcode", "output": out[-1500:]}
 
 
+class ProjectsIn(BaseModel):
+    projects: list[dict[str, Any]] = Field(max_length=projects.MAX_PROJECTS)
+
+
+def register_projects_routes(app: FastAPI) -> None:
+    @app.get("/api/projects")
+    def projects_list(user: User, request: Request) -> dict[str, Any]:
+        items = projects.load(_settings(request).data_dir)
+        return {"projects": projects.with_status(items), "git_dir": str(projects.git_dir())}
+
+    @app.put("/api/admin/projects")
+    def projects_save(body: ProjectsIn, user: Admin, request: Request) -> dict[str, Any]:
+        try:
+            items = projects.save(_settings(request).data_dir, body.projects)
+        except projects.ProjectsError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        with connect(_db(request)) as conn:
+            audit(conn, user["id"], "projects_saved", f"count={len(items)}")
+        return {"projects": projects.with_status(items)}
+
+
 def register_device_routes(app: FastAPI) -> None:
     register_radio_routes(app)
     register_printer_routes(app)
     register_parts_routes(app)
+    register_projects_routes(app)

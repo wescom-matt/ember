@@ -1,4 +1,4 @@
-/* Ember Workshop: Radio (CHIRP), Printer (CC2), Parts library, Hosts. Plain JS, same-origin API only. */
+/* Ember Workshop: Radio (CHIRP), Printer (CC2), Parts library, Projects, Hosts. Plain JS, same-origin API only. */
 (function () {
   "use strict";
   var U = window.EmberUI, $ = function (id) { return document.getElementById(id); };
@@ -17,9 +17,9 @@
 
   function showTab(name) {
     document.querySelectorAll(".wtab").forEach(function (t) { t.classList.toggle("active", t.dataset.wtab === name); });
-    ["radio", "printer", "parts", "hosts"].forEach(function (n) { $("wtab-" + n).classList.toggle("hidden", n !== name); });
+    ["radio", "printer", "parts", "projects", "hosts"].forEach(function (n) { $("wtab-" + n).classList.toggle("hidden", n !== name); });
     msg("");
-    var f = { radio: loadRadio, printer: loadPrinter, parts: searchParts, hosts: loadHosts }[name];
+    var f = { radio: loadRadio, printer: loadPrinter, parts: searchParts, projects: loadProjects, hosts: loadHosts }[name];
     f().catch(function (e) { msg(e.message); });
   }
 
@@ -210,6 +210,38 @@
     return c;
   }
 
+  /* ---------- projects ---------- */
+  function askEmber(p, c) {
+    var where = p.host ? " on " + p.host + " in " + p.folder : "";
+    $("input").value = "Project " + p.name + ": run `" + c.cmd + "`" + where + " (" + c.name + ").";
+    $("ws-dlg").close(); $("input").focus();
+  }
+  async function loadProjects() {
+    var d = await api("GET", "/api/projects");
+    $("pj-git").textContent = d.git_dir;
+    var box = $("pj-list"); box.textContent = "";
+    d.projects.forEach(function (p) {
+      var c = el("div", "act");
+      var head = el("div", "act-head"); head.appendChild(el("strong", "", p.name)); head.appendChild(el("span", "spacer"));
+      head.appendChild(el("span", "tag", p.last ? "mirror " + p.last.slice(0, 18) : "no mirror")); c.appendChild(head);
+      var info = [p.purpose, p.language, p.host ? "host " + p.host + " " + p.folder : "", p.backup_host ? "backup " + p.backup_host + " " + p.backup_folder : "",
+        p.board ? "board " + p.board + " · env " + p.env : "", p.serial_port ? "port " + p.serial_port : "", p.notes].filter(Boolean).join(" · ");
+      c.appendChild(el("div", "act-why", info));
+      p.commands.forEach(function (cmd) {
+        var row = el("div", "row"); row.appendChild(el("code", "", cmd.cmd)); row.appendChild(el("span", "spacer"));
+        row.appendChild(btn("Ask Ember: " + cmd.name, function () { askEmber(p, cmd); })); c.appendChild(row);
+      });
+      box.appendChild(c);
+    });
+    $("pj-admin").classList.toggle("hidden", !U.isAdmin());
+    $("pj-json").value = JSON.stringify(d.projects.map(function (p) { var q = Object.assign({}, p); delete q.mirror; delete q.last; return q; }), null, 2);
+  }
+  async function saveProjects() {
+    var items = JSON.parse($("pj-json").value);
+    await run(api("PUT", "/api/admin/projects", { projects: items }));
+    msg("Saved."); await loadProjects();
+  }
+
   /* ---------- hosts ---------- */
   async function loadHosts() {
     await loadTargets();
@@ -237,6 +269,7 @@
     ["pause", "resume", "cancel", "start"].forEach(function (a) { $("pr-" + a).addEventListener("click", function () { prAction(a).catch(function () {}); }); });
     $("pr-slice").addEventListener("click", function () { prSlice($("pr-model").value.trim(), Number($("pr-build").value) || 0).catch(function () {}); });
     $("pr-send").addEventListener("click", function () { prSend().catch(function () {}); });
+    $("pj-save").addEventListener("click", function () { saveProjects().catch(function (e) { msg(e.message); }); });
     $("pt-search").addEventListener("submit", function (ev) { ev.preventDefault(); searchParts().catch(function (e) { msg(e.message); }); });
   }
   wire();

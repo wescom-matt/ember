@@ -17,3 +17,6 @@ elegoo-win 0215cd958d6a52ae1bd33a5ad7509ecd1b156baf63fbe04333e04cf0305793e5 slic
 arduino-cli-linux 321ee249f44c78053234fec0f36101092bc6021bf24939e15e0cc2449c5ed250 buildhost/arduino-cli_1.6.0_Linux_64bit.tar.gz https://github.com/arduino/arduino-cli/releases/download/v1.6.0/arduino-cli_1.6.0_Linux_64bit.tar.gz
 arduino-cli-win 2769b9b282ce597db9679d8ec14d726d57004ca4205ef4d7a795bf36b6cdc9d8 buildhost/arduino-cli_1.6.0_Windows_64bit.zip https://github.com/arduino/arduino-cli/releases/download/v1.6.0/arduino-cli_1.6.0_Windows_64bit.zip
 pio-udev ab581c9ef8523978f9300bb7687487543a804c9fe70c27ed95df1c9b79aaa0ec buildhost/99-platformio-udev.rules https://raw.githubusercontent.com/platformio/platformio-core/v6.2.0/platformio/assets/system/99-platformio-udev.rules
+# --- v0.5.0 project work (Node for the FEW frontend; checksums from nodejs.org SHASUMS256.txt) ---
+node-linux 14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647 projects/node/node-v24.19.0-linux-x64.tar.xz https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-x64.tar.xz
+node-win 57f71ab3652e797d84acddc79c81cc9ff1c6ddb2a1974cdb83f00fee9bff4c73 projects/node/node-v24.19.0-win-x64.zip https://nodejs.org/dist/v24.19.0/node-v24.19.0-win-x64.zip

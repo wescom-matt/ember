@@ -9,6 +9,7 @@
 #   ./coldboot.sh backup [--out DIR]         Ember DB + secret key + configs -> .tar.gz + SHA256SUMS
 #   ./coldboot.sh restore ARCHIVE [--to DIR] [--dry-run] [--yes]
 #   ./coldboot.sh cache DIR [--skip-models] [--skip-buildtools] [--only-buildtools]
+#                     [--skip-projects] [--only-projects]    (projects: repos, toolchains, wheels, npm, NuGet)
 #                     [--with-arduino-core] [--parts-gb N]   fill an offline cache (USB disk)
 set -euo pipefail
 umask 022
@@ -417,6 +418,21 @@ step_radio_helper() {
   fi
 }
 
+step_projects_restore() {
+  say "9c. Project mirrors (~/git) and offline developer reference, from the cache"
+  [[ -n "$CACHE" ]] || { info "no --cache: skipped"; return 0; }
+  if [[ -d "$CACHE/repos" ]]; then
+    act "import project mirrors into ~/git (never overwrites offline work)" bash "$REPO/scripts/import-mirrors.sh" "$CACHE/repos"
+  fi
+  local dk="$HOME/.local/share/ember/dev-kb"
+  if [[ ! -f "$dk/index.db" && -f "$CACHE/dev-kb/index.db" ]]; then
+    act "copy developer reference from cache" copy_tree "$CACHE/dev-kb" "$dk"
+  fi
+  if [[ -d "$CACHE/projects" ]]; then
+    info "project caches: $CACHE/projects and $CACHE/buildhost/pio-envs (see README, Off-grid project work)"
+  fi
+}
+
 step_nomad_check() {
   say "10. Nomad (reinstalled separately; read-only check)"
   check_qdrant
@@ -494,6 +510,7 @@ cmd_install() {
   step_nomad_search
   step_ember
   step_radio_helper
+  step_projects_restore
   step_nomad_check
   if [[ ${#SUDO_LINES[@]} -gt 0 ]]; then write_system_steps; fi
   say "Done. Next: ./coldboot.sh check   (open a new terminal first so PATH is fresh)"
@@ -891,24 +908,50 @@ cache_arduino() {
   unset ARDUINO_DIRECTORIES_DATA ARDUINO_DIRECTORIES_USER ARDUINO_DIRECTORIES_DOWNLOADS
 }
 
+# Matt's project repos + their build dependencies (coldboot/projects_cache.py) and the dev docs.
+cache_projects() {
+  local dir="$1" py venv uv
+  say "Project repos, PlatformIO toolchains, wheels, npm and NuGet packages"
+  cache_pinned node-linux "$dir"
+  cache_pinned node-win "$dir"
+  py="$BIN/python$PY_VERSION"
+  have "$py" || py="python3"
+  uv="$BIN/uv"
+  have "$uv" || uv="uv"
+  venv="$(scratch_dir)/projtools"
+  "$py" -m venv "$venv"
+  "$venv/bin/pip" install -q --require-hashes -r "$CB/buildhost/pio-requirements.txt" || warn "PlatformIO install failed"
+  "$py" "$CB/projects_cache.py" --dest "$dir" --pio "$venv/bin/pio" --python "$venv/bin/python" --uv "$uv" \
+    --node-tgz "$dir/$(pin_field node-linux 3)" || warn "project cache had problems (see $dir/projects/MANIFEST.json)"
+  if [[ -f "$HOME/.local/share/ember/dev-kb/index.db" ]]; then
+    say "Offline developer reference"
+    rm -rf "$dir/dev-kb" && cp -a "$HOME/.local/share/ember/dev-kb" "$dir/dev-kb"
+  else
+    warn "no dev reference yet (run: .venv/bin/python scripts/fetch_dev_kb.py)"
+  fi
+}
+
 cmd_cache() {
-  local dir="" skip_models=0 buildtools=1 only_tools=0
+  local dir="" skip_models=0 buildtools=1 only_tools=0 projects=1 only_projects=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --skip-models) skip_models=1; shift ;;
       --skip-buildtools) buildtools=0; shift ;;
       --only-buildtools) only_tools=1; shift ;;
+      --skip-projects) projects=0; shift ;;
+      --only-projects) only_projects=1; shift ;;
       --with-arduino-core) WITH_ARDUINO_CORE=1; shift ;;
       --parts-gb) PARTS_GB="${2:?--parts-gb needs a number}"; shift 2 ;;
       -*) die "cache: unknown option $1" ;;
       *) dir="$1"; shift ;;
     esac
   done
-  [[ -n "$dir" ]] || die "usage: coldboot cache DIR [--skip-models] [--skip-buildtools] [--only-buildtools]"
+  [[ -n "$dir" ]] || die "usage: coldboot cache DIR [--skip-models] [--skip-buildtools] [--only-buildtools] [--skip-projects] [--only-projects]"
   install -d "$dir"
   dir="$(cd "$dir" && pwd)"
-  info "free space at $dir: $(df -h --output=avail "$dir" | tail -n 1 | tr -d ' ') (full cache needs about 19 GB; +9 GB with --with-arduino-core)"
+  info "free space at $dir: $(df -h --output=avail "$dir" | tail -n 1 | tr -d ' ') (full cache needs about 28 GB, or 20 GB with --skip-projects; +9 GB with --with-arduino-core)"
   if [[ "$only_tools" == "1" ]]; then cache_buildtools "$dir"; cache_sums "$dir"; return 0; fi
+  if [[ "$only_projects" == "1" ]]; then cache_projects "$dir"; cache_sums "$dir"; return 0; fi
   say "Pinned binaries (Ollama, Goose, uv, Python)"
   local name
   for name in ollama goose goose-deb uv uvx cpython; do cache_pinned "$name" "$dir"; done
@@ -917,6 +960,7 @@ cmd_cache() {
   cache_ember_wheels "$dir"
   if [[ "$skip_models" == "0" ]]; then say "Models"; cache_models "$dir"; fi
   if [[ "$buildtools" == "1" ]]; then cache_buildtools "$dir"; fi
+  if [[ "$projects" == "1" ]]; then cache_projects "$dir"; fi
   say "Ember repo copy (git bundle) and guide"
   git -C "$REPO" bundle create "$dir/ember.bundle" --all 2>/dev/null || warn "git bundle failed"
   cp -p "$REPO/COLDBOOT.md" "$dir/" 2>/dev/null || true
@@ -933,7 +977,7 @@ cache_sums() {
 }
 
 usage() {
-  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {

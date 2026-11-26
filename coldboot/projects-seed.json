@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "name": "Outpost",
+      "repo": "wescom-matt/Outpost",
+      "language": "Dart, C++",
+      "purpose": "Offline campsite chat: Flutter phone app + Heltec V3 WiFi/LoRa gateway firmware",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\Documents\\Outpost",
+      "backup_host": "Mint",
+      "backup_folder": "~/projects/Outpost",
+      "board": "Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262)",
+      "env": "heltec_v3_arduino3",
+      "serial_port": "COMx on Los Gatos (Device Manager), /dev/ttyUSB0 on Mint",
+      "commands": [
+        {
+          "name": "build",
+          "cmd": "pio run -e heltec_v3_arduino3"
+        },
+        {
+          "name": "build legacy (Arduino 2 / IDF 4.4)",
+          "cmd": "pio run -e heltec_v3"
+        },
+        {
+          "name": "flash",
+          "cmd": "pio run -e heltec_v3_arduino3 -t upload --upload-port PORT"
+        },
+        {
+          "name": "serial monitor",
+          "cmd": "pio device monitor -b 115200 -p PORT"
+        },
+        {
+          "name": "native tests",
+          "cmd": "cmake -S . -B build && cmake --build build && ctest --test-dir build"
+        },
+        {
+          "name": "loopback sim",
+          "cmd": "pio run -e native"
+        },
+        {
+          "name": "android app",
+          "cmd": "bash scripts/pre_build_assets.sh android && flutter build apk --release --target-platform android-arm64"
+        }
+      ],
+      "offline": {
+        "platformio": true
+      },
+      "notes": "Ship env is heltec_v3_arduino3 (pioarduino 55.03.312, Arduino 3.3.12 / IDF 5.5.5); heltec_v3 is espressif32@7.1.3. iOS builds need a Mac."
+    },
+    {
+      "name": "Outpost 2.0 (Heltec V4)",
+      "repo": "",
+      "language": "C++ (Arduino-ESP32 3.3.12)",
+      "purpose": "PLANNED: next Outpost gateway on the Heltec WiFi LoRa 32 V4-R8 (ESP32-S3R8 + SX1262, 28 dBm)",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\Documents\\Outpost2",
+      "backup_host": "Mint",
+      "backup_folder": "~/projects/Outpost2",
+      "board": "Heltec WiFi LoRa 32 V4-R8 (ESP32-S3R8, 16 MB flash, 8 MB octal PSRAM, SX1262)",
+      "env": "heltec_v4r8",
+      "serial_port": "COMx on Los Gatos, /dev/ttyACM0 or /dev/ttyUSB0 on Mint",
+      "commands": [
+        {
+          "name": "start from template",
+          "cmd": "cp -r ~/ember/coldboot/outpost2-template ~/projects/Outpost2"
+        },
+        {
+          "name": "build",
+          "cmd": "pio run -e heltec_v4r8"
+        },
+        {
+          "name": "flash",
+          "cmd": "pio run -e heltec_v4r8 -t upload --upload-port PORT"
+        },
+        {
+          "name": "serial monitor",
+          "cmd": "pio device monitor -b 115200 -p PORT"
+        }
+      ],
+      "offline": {
+        "template": "coldboot/outpost2-template"
+      },
+      "notes": "No official PlatformIO board for V4/V4-R8 yet: the template carries an Ember custom board + pin variant (R8 pins from Heltec's V4-R8 datasheet). Arduino-ESP32 3.3.12 has a heltec_wifi_lora_32_V4 variant, but it matches the V4 R2 (QSPI PSRAM, LED 35, Vext 36). Not tested on hardware."
+    },
+    {
+      "name": "CamWall",
+      "repo": "wescom-matt/CamWall",
+      "language": "C# (.NET 8 WPF/WinForms)",
+      "purpose": "Multi-monitor security camera wall for Windows (LibVLC)",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\bin\\sidestep\\camwall",
+      "commands": [
+        {
+          "name": "build",
+          "cmd": "dotnet build CamWall.sln -c Release"
+        },
+        {
+          "name": "test",
+          "cmd": "dotnet test CamWall.Tests"
+        },
+        {
+          "name": "installer",
+          "cmd": "iscc installer\\CamWall.iss"
+        }
+      ],
+      "offline": {
+        "nuget": true
+      }
+    },
+    {
+      "name": "FEW",
+      "repo": "wescom-matt/FEW",
+      "language": "Python, TypeScript, C#",
+      "purpose": "A Few Recipes: family recipe archive (FastAPI + PostgreSQL, React/Vite, Windows tray + installer)",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\FEW",
+      "backup_host": "Mint",
+      "backup_folder": "~/projects/FEW",
+      "commands": [
+        {
+          "name": "backend deps",
+          "cmd": "python -m pip install -r backend/requirements.txt"
+        },
+        {
+          "name": "frontend build",
+          "cmd": "cd frontend && npm ci && npm run build"
+        },
+        {
+          "name": "tray app",
+          "cmd": "dotnet build desktop\\FewTray\\FewTray.csproj -c Release -r win-x64"
+        },
+        {
+          "name": "full installer",
+          "cmd": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\desktop\\scripts\\build-full-installer.ps1"
+        }
+      ],
+      "offline": {
+        "pip": [
+          "backend/requirements.txt"
+        ],
+        "npm": [
+          "frontend"
+        ],
+        "nuget": true
+      }
+    },
+    {
+      "name": "BlackCat",
+      "repo": "wescom-matt/BlackCat",
+      "language": "C# (ASP.NET Core 8, EF Core)",
+      "purpose": "Black Cat fragrance web app",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\BlackCat",
+      "commands": [
+        {
+          "name": "build",
+          "cmd": "dotnet build blackcat.sln -c Release"
+        },
+        {
+          "name": "run",
+          "cmd": "dotnet run --project blackcat.UI.Web"
+        }
+      ],
+      "offline": {
+        "nuget": true
+      },
+      "notes": "The AI autofill feature calls an online AI service and will not work offline."
+    },
+    {
+      "name": "bcfc-workspace",
+      "repo": "wescom-matt/bcfc-workspace",
+      "language": "C#, PowerShell",
+      "purpose": "BCFC workspace: blackcat, snapback, travel-guard",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\bcfc-workspace",
+      "commands": [
+        {
+          "name": "start",
+          "cmd": "powershell -ExecutionPolicy Bypass -File .\\Start-BCFC.ps1"
+        }
+      ],
+      "offline": {
+        "nuget": true
+      }
+    },
+    {
+      "name": "SystemScrape",
+      "repo": "wescom-matt/SystemScrape",
+      "language": "C# (.NET 8 WPF)",
+      "purpose": "System scrape / inventory tool",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\bin\\sidestep\\system_scrape",
+      "commands": [
+        {
+          "name": "build",
+          "cmd": "dotnet build SystemScrape.sln -c Release"
+        }
+      ],
+      "offline": {
+        "nuget": true
+      }
+    },
+    {
+      "name": "Face-AI",
+      "repo": "wescom-matt/Face-AI",
+      "language": "Python (FastAPI)",
+      "purpose": "Local N-of-1 facial kinematics collection console",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\Face_AI",
+      "commands": [
+        {
+          "name": "deps",
+          "cmd": "python -m pip install -r requirements.txt"
+        },
+        {
+          "name": "start",
+          "cmd": "start.bat"
+        }
+      ],
+      "offline": {
+        "pip": [
+          "requirements.txt"
+        ]
+      },
+      "notes": "The google-genai (Gemini) part needs internet."
+    },
+    {
+      "name": "ember",
+      "repo": "wescom-matt/ember",
+      "language": "Python",
+      "purpose": "This assistant (runs on the P1)",
+      "host": "This computer",
+      "folder": "~/ember",
+      "commands": [
+        {
+          "name": "test",
+          "cmd": ".venv/bin/pytest -q"
+        },
+        {
+          "name": "restart",
+          "cmd": "ember restart"
+        }
+      ],
+      "offline": {
+        "pip": [
+          "requirements.txt"
+        ]
+      }
+    },
+    {
+      "name": "rebuild-kit-builder",
+      "repo": "wescom-matt/rebuild-kit-builder",
+      "language": "PowerShell",
+      "purpose": "Builds a Windows rebuild USB kit",
+      "host": "Los Gatos",
+      "folder": "C:\\Users\\Matt\\rebuild-kit-builder",
+      "commands": [
+        {
+          "name": "build kit",
+          "cmd": "powershell -ExecutionPolicy Bypass -File .\\Build-RebuildKit.ps1"
+        }
+      ],
+      "notes": "The Windows ISO download step needs internet."
+    },
+    {
+      "name": "NomadHardware",
+      "repo": "wescom-matt/NomadHardware",
+      "language": "HTML (docs)",
+      "purpose": "Nomad RAID/storage hardware docs",
+      "host": "",
+      "folder": "",
+      "commands": []
+    },
+    {
+      "name": "FEW-Jenkins",
+      "repo": "wescom-matt/FEW-Jenkins",
+      "language": "Jenkinsfile",
+      "purpose": "Jenkins CI for FEW Windows installer builds",
+      "host": "",
+      "folder": "",
+      "commands": [],
+      "notes": "Needs a Jenkins server; build FEW by hand offline."
+    },
+    {
+      "name": "wescom",
+      "repo": "wescom-matt/wescom",
+      "language": "",
+      "purpose": "Empty (README only)",
+      "host": "",
+      "folder": "",
+      "commands": []
+    }
+  ]
+}

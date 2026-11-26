@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ember import config, ollama, printer, roles, targets, tools
+from ember import config, ollama, printer, projects, roles, targets, tools
 from ember.agent import AgentCtx, resume, run_agent, tool_prompt
 from ember.chat import Turn, _event, _retrieve, build_messages, history, run_turn
 from ember.db import audit, connect
@@ -114,7 +114,7 @@ def start_exec_turn(
         return _fallback(turn, kb, request, why)
     ctx = AgentCtx(settings.db_path, settings.ollama_url, _vault(request), user_id, turn.conversation_id,
                    after_id, turn.model, turn.think, spec.id if spec else 0, hosts=hosts)
-    return _exec_stream(ctx, kb, turn.question, tool_prompt(spec, names))
+    return _exec_stream(ctx, kb, turn.question, tool_prompt(spec, names) + projects.prompt_text(settings.data_dir))
 
 
 def _target_name(conn: sqlite3.Connection, target_id: int) -> str:

@@ -38,7 +38,7 @@
     </div>
     <nav id="chat-list" class="chat-list" aria-label="Chats"></nav>
     <div class="side-bottom">
-      <button id="ws-btn" class="btn ghost wide left">Workshop: radio, printer, parts</button>
+      <button id="ws-btn" class="btn ghost wide left">Workshop: radio, printer, parts, projects</button>
       <button id="admin-btn" class="btn ghost wide left hidden">Users &amp; admin</button>
       <button id="pw-btn" class="btn ghost wide left">Change password</button>
       <div class="me-row"><span id="me-name" class="me-name"></span><button id="logout-btn" class="btn ghost small">Sign out</button></div>
@@ -124,7 +124,7 @@
 </dialog>
 
 <dialog id="ws-dlg" class="dlg wide">
-  <div class="dlg-head"><div class="tabs"><button class="wtab tab active" data-wtab="radio">Radio</button><button class="wtab tab" data-wtab="printer">Printer &amp; slicing</button><button class="wtab tab" data-wtab="parts">Parts library</button><button class="wtab tab" data-wtab="hosts">Hosts</button></div><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-head"><div class="tabs"><button class="wtab tab active" data-wtab="radio">Radio</button><button class="wtab tab" data-wtab="printer">Printer &amp; slicing</button><button class="wtab tab" data-wtab="parts">Parts library</button><button class="wtab tab" data-wtab="projects">Projects</button><button class="wtab tab" data-wtab="hosts">Hosts</button></div><button class="btn ghost small" data-close>Close</button></div>
   <section id="wtab-radio" class="tabpane">
     <div class="add-user"><select id="rd-host" title="Radio host (has the cable)"></select><button id="rd-ports" type="button" class="btn small">Find ports</button><select id="rd-port-pick"><option value="">port (Find ports)</option></select><span id="rd-helper" class="muted small-text"></span></div>
     <div id="rd-list"></div>
@@ -142,6 +142,11 @@
   <section id="wtab-parts" class="tabpane hidden">
     <form id="pt-search" class="add-user"><input id="pt-q" type="search" placeholder="search parts and repair guides (e.g. hose 13mm, knob, antenna, Voron)" maxlength="200"><button class="btn small primary">Search</button><select id="pt-build" title="Build host for slicing"></select><select id="pt-nozzle"><option>0.4</option><option>0.2</option><option>0.6</option><option>0.8</option></select><span id="pt-stats" class="muted small-text"></span></form>
     <div id="pt-list"></div>
+  </section>
+  <section id="wtab-projects" class="tabpane hidden">
+    <p class="muted">Each project's build host, folder, board and commands. "Ask Ember" puts the command in the chat; running it still goes through the normal approval. Offline copies: <span id="pj-git"></span>.</p>
+    <div id="pj-list"></div>
+    <details id="pj-admin" class="hidden"><summary>Edit projects (admin, JSON)</summary><textarea id="pj-json" rows="16" spellcheck="false" class="json-edit"></textarea><button id="pj-save" class="btn small primary" type="button">Save</button></details>
   </section>
   <section id="wtab-hosts" class="tabpane hidden">
     <p class="muted">Which computer does what. The default applies to everyone (admin); "this chat" overrides it for the open chat.</p>

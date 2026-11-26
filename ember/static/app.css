@@ -208,3 +208,5 @@ table.chan td, table.chan th { padding: .15rem .5rem; font-size: .85rem; }
 .kv { display: flex; flex-direction: column; border: 1px solid #444; border-radius: 8px; padding: .35rem .6rem; }
 #ws-dlg h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
 #ws-dlg .tabpane { max-height: 70vh; overflow: auto; }
+.json-edit { width: 100%; font-family: monospace; font-size: 12px; }
+#pj-list code { font-size: 12px; overflow-wrap: anywhere; }

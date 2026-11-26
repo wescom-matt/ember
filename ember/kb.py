@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Protocol
 
+from ember.dev_kb import DevKB
 from ember.httpjson import call_json
 from ember.parts import PartsKB
 from ember.radio_kb import RadioKB
@@ -132,6 +133,8 @@ def build_registry(ollama_url: str, qdrant_url: str, data_dir: Path | None = Non
         out[radio_kb.id] = radio_kb
         parts_kb = PartsKB(data_dir)
         out[parts_kb.id] = parts_kb
+        dev_kb = DevKB(data_dir)
+        out[dev_kb.id] = dev_kb
     return out
 
 

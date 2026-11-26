@@ -10,12 +10,12 @@ Ollama and the knowledge base (Qdrant). ColdBoot checks them but never changes t
 
 ## 1. What to keep on the USB disk (do this now, then again after big changes)
 
-Use a 32 GB USB disk. Plug it into the P1. It shows up as something like
+Use a 64 GB USB disk (a 32 GB disk still fits, with about 2 GB spare). Plug it into the P1. It shows up as something like
 `/media/matt/USB`.
 
 ```bash
 cd ~/ember
-./coldboot.sh cache /media/matt/USB/coldboot-cache     # about 19 GB; takes 20-40 minutes
+./coldboot.sh cache /media/matt/USB/coldboot-cache     # about 28 GB (20 GB with --skip-projects); 40-90 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups     # a few MB
 cp -a ~/.local/share/ember/radios /media/matt/USB/radio-images   # radio backups (not in the ColdBoot backup)
 ```
@@ -32,7 +32,11 @@ You end up with:
 | `coldboot-cache/buildtools/` | CHIRP, PlatformIO + ESP32 packages, esptool, arduino-cli, OrcaSlicer and ElegooSlicer, Centauri Carbon 2 profiles | ~5.4 GB |
 | `coldboot-cache/parts/` | Parts library: openly licensed 3D models and iFixit guides (cap with `--parts-gb N`, default 3) | ~1 GB |
 | `coldboot-cache/radio-kb/` | Radio reference library (band plan, FCC rules, channel lists) | ~7 MB |
-| `coldboot-cache/arduino/` | Arduino ESP32 core, only with `--with-arduino-core` (then use a 64 GB disk) | ~9 GB |
+| `coldboot-cache/buildhost/pio-envs/` | Outpost's PlatformIO cores (pioarduino 55.03.312, espressif32 7.1.3, native) | ~7.5 GB |
+| `coldboot-cache/projects/` | Library versions, Python wheels, npm cache, Node, NuGet packages, `MANIFEST.json` | ~0.7 GB |
+| `coldboot-cache/repos/` | `git bundle` of all 12 wescom-matt repos, plus issues and PRs | ~0.06 GB |
+| `coldboot-cache/dev-kb/` | Developer reference (ESP32, LoRa, Heltec V3/V4, AX.25/X.25) | ~0.16 GB |
+| `coldboot-cache/arduino/` | Arduino ESP32 core, only with `--with-arduino-core` (then a 64 GB disk is required) | ~9 GB |
 | `coldboot-cache/ember.bundle` | A full copy of this repo (in case GitHub is unreachable) | small |
 | `coldboot-cache/SHA256SUMS` | Checksums; install checks every file | small |
 | `backups/ember-coldboot-*.tar.gz` + `.sha256` | Ember's database (users, chats, targets, saved logins), its **secret key**, TLS cert, Goose/Interpreter settings | small |
@@ -162,3 +166,9 @@ Forgot the password: `ember reset-password matt`. List accounts: `ember list-use
 Recipes for the custom models: `coldboot/Modelfiles.md`. Model list: `coldboot/models.json`.
 The older kit `~/agent-stack-backup` (with `rebuild.sh`) still works; ColdBoot also reads
 its files when you run `coldboot cache`.
+
+---
+
+## Projects after a rebuild
+
+`./coldboot.sh install --cache DIR` imports the repo bundles into `~/git` (it only adds; offline work is never overwritten) and copies the developer reference. Build hosts get the PlatformIO cores with `install-buildhost.sh --cache DIR`. To refresh only the project part of the USB: `./coldboot.sh cache DIR --only-projects`. Details: README section 13.

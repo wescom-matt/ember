@@ -143,6 +143,7 @@ class RadioKB:
     id = "radio"
     label = "Radio reference (offline)"
     description = "US band plans, FCC Part 95/97, marine, aviation, NOAA weather, antennas"
+    build_hint = "radio knowledge base is not built yet (run scripts/fetch_radio_kb.py while online)"
 
     def __init__(self, data_dir: Path) -> None:
         self.path = index_path(data_dir)
@@ -152,7 +153,7 @@ class RadioKB:
 
     def search(self, query: str, top_k: int) -> list[dict[str, Any]]:
         if not self.available():
-            raise RuntimeError("radio knowledge base is not built yet (run scripts/fetch_radio_kb.py while online)")
+            raise RuntimeError(self.build_hint)
         words = re.findall(r"[A-Za-z0-9.]+", query.lower())[:12]
         if not words:
             return []

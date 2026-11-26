@@ -99,6 +99,21 @@ step_chirp() {
   SUDO_NEED+=("sudo usermod -aG dialout $USER   # serial port access for radio cables (log out and back in)")
 }
 
+# A PlatformIO core made elsewhere (USB cache) has the old path inside pioarduino's Python env
+# (penv): rewrite it and re-link penv to this host's Python so offline builds need no downloads.
+relocate_core() {
+  local core="$1" old py
+  [[ -f "$core/.ember-core-path" && -d "$core/penv" ]] || return 0
+  old="$(cat "$core/.ember-core-path")"
+  [[ "$old" == "$core" ]] && return 0
+  py="$SHARE/pio-venv/bin/python"
+  [[ "$DRY" == "0" ]] || { info "[dry-run] would relocate $core"; return 0; }
+  grep -rlI --null -F "$old" "$core/penv" | xargs -0 -r sed -i "s#$old#$core#g"
+  "$py" -m venv --upgrade "$core/penv" || info "WARN could not re-link $core/penv (needs Python 3.12)"
+  printf '%s' "$core" > "$core/.ember-core-path"
+  info "relocated $core"
+}
+
 step_pio() {
   say "PlatformIO + esptool in $SHARE/pio-venv"
   if [[ ! -x "$SHARE/pio-venv/bin/pio" ]]; then
@@ -111,6 +126,12 @@ step_pio() {
   if [[ -n "$CACHE" && -d "$CACHE/buildhost/platformio" ]]; then
     act "copy cached PlatformIO packages (ESP32 toolchains, LoRa libraries) to ~/.platformio" \
       cp -rn "$CACHE/buildhost/platformio/." "$HOME/.platformio/"
+  fi
+  if [[ -n "$CACHE" && -d "$CACHE/buildhost/pio-envs" ]]; then
+    act "copy cached project PlatformIO cores (Outpost etc.) to ~/.platformio-envs" \
+      cp -rn "$CACHE/buildhost/pio-envs/." "$HOME/.platformio-envs/"
+    local core
+    for core in "$HOME"/.platformio-envs/*/; do relocate_core "${core%/}"; done
   fi
   local rules
   rules="$(get_pinned pio-udev)"

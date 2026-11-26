@@ -62,6 +62,14 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 - **Fixing:** reads logs, edits config files (shows a diff and keeps a `.bak-ember` copy), restarts services, installs packages; risky steps always ask.
 - **Safety line:** no autonomous weapon targeting or firing code.
 
+**Phase 3c, off-grid project work (0.5.0)**
+- **Projects view:** each wescom-matt project with its build host, folder, board and commands. Ember runs them with the usual approval.
+- **Repo mirrors** of all 12 repos in `~/git` on the P1, with issues and PRs saved. Work offline through the P1 (`p1` git remote) and push to GitHub later.
+- **Caches** for Outpost's PlatformIO toolchains and libraries, Python wheels, npm and NuGet packages, so projects build with no internet.
+- **Developer reference:** ESP32-S3, Arduino-ESP32, ESP-IDF, RadioLib, LoRaWAN, SX1262, Heltec V3/V4, AX.25, KISS, APRS, Direwolf, X.25.
+- **Outpost 2.0** starter for the Heltec V4-R8 (untested on hardware).
+- Ember is also a general chat assistant; offline it's slower and knows less.
+
 ### Important files
 
 | File | Why it matters |
@@ -74,25 +82,26 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 | `~/AI-AGENTS-README.md` | Short how-to for the agents on the P1 |
 | `~/.local/share/ember/radios/` | Your radio backups and edited images. **Not in the ColdBoot backup**: copy this folder to the USB yourself. |
 | `~/.local/share/ember/parts/`, `radio-kb/` | Parts library and radio library (rebuilt from the USB cache or re-downloaded) |
+| `~/git/`, `~/.local/share/ember/dev-kb/` | Project mirrors and developer reference (rebuilt from the USB cache) |
 | `~/agent-stack-backup/` | The older rebuild kit (still works) |
 
 ---
 
 ## Part 2. The USB disk: your insurance
 
-Keep one **32 GB USB disk** (64 GB if you add the Arduino core) in a drawer. Refresh it after big changes, and at least every few months.
+Keep one **64 GB USB disk** (32 GB still fits, just barely) in a drawer. Refresh it after big changes, and at least every few months.
 
 On the P1, with the USB plugged in (it appears as something like `/media/matt/USB`):
 
 ```bash
 cd ~/ember
-./coldboot.sh cache  /media/matt/USB/coldboot-cache     # about 19 GB, 20-40 minutes
+./coldboot.sh cache  /media/matt/USB/coldboot-cache     # about 28 GB, 40-90 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups      # a few MB, do this often
 cp -a ~/.local/share/ember/radios /media/matt/USB/radio-images   # your radio backups
 ```
 
 What ends up on it:
-- `coldboot-cache/`: the AI models (~10 GB), Ollama, Goose, Python packages, the build and radio tools (~5.4 GB), the parts library and radio library, a full copy of the Ember repo (`ember.bundle`), the guide, and checksums for everything.
+- `coldboot-cache/`: the AI models (~10 GB), Ollama, Goose, Python packages, the build and radio tools (~5.4 GB), the PlatformIO toolchains and packages for your projects (~8 GB), bundles of all 12 repos, the parts, radio and developer libraries, a full copy of the Ember repo (`ember.bundle`), the guide, and checksums for everything.
 - `backups/ember-coldboot-<date>.tar.gz` and its `.sha256` file: Ember's database and secret key.
 
 > **The backup holds Ember's secret key.** Anyone who has it can read the saved SSH
