@@ -33,6 +33,11 @@ The chirp sets a hard ceiling too: max range = IF bandwidth × c / (2 × chirp s
 | Price (late 2026) | about $299 from TI, $345-425 at distributors | quote from D3 (custom antenna variant) | about $175-210 (DigiKey lead time up to 12 weeks) |
 | Best use | wide-azimuth cue for drones and nearby aircraft | longest reach on small drones; mount it on the Yagi boom or rotator and point it | very wide view overhead, compact, shortest reach |
 
+Quick facts in plain words:
+- **IWR1843BOOST:** 77 GHz TI booster board. Its field of view is ±60 degrees azimuth and ±15 degrees elevation, and its angular resolution is 15 degrees in azimuth. It sees a person at 37-80 m and a car at about 200 m. Flash it with UniFlash in SOP5; data comes out at 921600 baud.
+- **D3 RS-6843 24-patch:** 60 GHz IWR6843 board with high-gain patch arrays. Its field of view is a narrow beam of about 20 degrees, and it sees a 250 g drone at 75-80 m. It doesn't measure angle inside the beam; point it like a spotlight.
+- **IWR6843AOPEVM:** 60 GHz antenna-on-package TI board. Its field of view is ±60 degrees azimuth and ±60 degrees elevation, with 29 degree angular resolution. It sees a person at about 49 m and a car at about 87 m. It's USB powered and has CP2105 serial ports.
+
 A useful pattern: one wide-FoV board (1843BOOST or AOP) spots the target and gives a coarse bearing, then the rotator turns, and a narrow-beam RS-6843 on the boom confirms and holds it.
 
 ### Links (TI and D3 documents; read them there)
