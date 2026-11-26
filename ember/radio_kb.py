@@ -105,6 +105,18 @@ AMSAT_SOURCES: list[dict[str, str]] = [
         "title": "Ember guide - 2 m and 70 cm Yagi designs (NEC-modeled), stacking, matching, cross-Yagi, NEC2 notes",
     },
     {
+        "id": "mmwave-cue-guide",
+        "kind": "local",
+        "url": "docs/amsat/mmwave-radar-cueing.md",
+        "title": "Ember guide - mmWave radar cues (IWR1843BOOST, RS-6843, IWR6843AOP): specs, TLVs, rotctld, ranges",
+    },
+    {
+        "id": "mmwave-cue-script",
+        "kind": "local",
+        "url": "scripts/mmwave_cue.py",
+        "title": "Ember script mmwave_cue.py - TI mmWave UART reader to az/el and rotctld (CC0)",
+    },
+    {
         "id": "hamlib-rigctld",
         "kind": "roff",
         "url": f"{GH}/Hamlib/Hamlib/master/doc/man1/rigctld.1",
@@ -240,6 +252,8 @@ AMSAT_SOURCES: list[dict[str, str]] = [
         "Tropospheric_propagation",
         "Radio_horizon",
         "Amateur_radio_contest",
+        "Radar_cross_section",
+        "Extremely_high_frequency",
     )
 ]
 

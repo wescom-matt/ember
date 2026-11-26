@@ -230,6 +230,7 @@ An offline, searchable library. Pick **Radio reference** in the chat. Answers ci
   - radar basics (pulse, FMCW), monopulse and beam-steered tracking, alpha-beta and Kalman track filters
   - beam update timing, pass scheduling, make-before-break handoff between satellites and Doppler hand-over
   - **cued beam steering** for ham links: a radar, ADS-B or orbit-prediction track turned into az/el and then into array or rotator pointing (frame conversion, track filter, latency prediction, Doppler); **aircraft scatter** on 2 m/70 cm/23 cm with ADS-B scheduling; and an overview of the VHF/UHF contest rules (ARRL, CQ WW VHF, IARU Region 1)
+  - **Small mmWave radars as pointing cues** (TI IWR1843BOOST, D3 RS-6843 24-patch, TI IWR6843AOPEVM): specs, flashing with UniFlash, `.cfg` chirp files, the UART TLV format (point cloud, tracker output), mounting and lever-arm maths, smoothing, latency and rotctld, with honest range limits. The reader is `scripts/mmwave_cue.py` (CC0). TI/D3 documents are linked and summarised, not copied. See the comparison below.
   - **2 m and 70 cm Yagis:** element tables for 3-11 elements (144.2 MHz), 7-17 elements (432.1 MHz) and satellite 4-element (145.9) and 7-element (435.5) designs, designed and modeled by Ember with NEC-2 (gain, F/B, impedance, beamwidth, DL6WU stacking distances). Also boom correction, matching (folded dipole, 4:1 balun, hairpin, gamma, 28 ohm with 75 ohm quarter-wave lines), cross-Yagis for circular polarisation and xnec2c modeling notes with a sample NEC deck. These are starting points: model and measure your build.
 - **Software docs:**
   - Hamlib `rigctld`/`rigctl`/`rotctld`/`rotctl` man pages (GPL)
@@ -246,6 +247,25 @@ An offline, searchable library. Pick **Radio reference** in the chat. Answers ci
   - the Analog Devices wiki
   - published DK7ZB, DL6WU and Cushcraft element tables (copyrighted). Ember's own NEC-modeled designs follow the same long-Yagi spacing method instead.
   - AirScout, which is only mentioned by name
+
+**Radar and DF options for drone fox hunts and radar-cued Yagi pointing** (prices late 2026; ranges are estimates scaled from TI/D3 figures):
+
+| Option | Small drone | Aircraft | FoV | Angle resolution | Cost | Tiling / sync | Software |
+|---|---|---|---|---|---|---|---|
+| **ADS-B** (RTL-SDR + dump1090-fa/readsb) | – | 200-400 km | all-round | exact position | $30-60 | merge many receivers | open source, mature |
+| **KrakenSDR** (5-ch coherent RF DF) | the fox **transmitter** at km range | – | 360° | a few degrees | $749 + antennas | coherent per unit; triangulate | open source, Raspberry Pi |
+| TI IWR1843BOOST | ~15-40 m | ~200-300 m | ±60° / ±15° | 15° / 58° | ~$299 | independent; HW frame trigger | SDK 3.x, Radar Toolbox |
+| D3 RS-6843 24-patch | **~75-80 m** (measured) | ~150 m+ | ~20° beam | none (staring beam) | quote | independent | TI SDK + D3 |
+| TI IWR6843AOPEVM | ~15-25 m | ~130 m | ±60° / ±60° | 29° / 29° | ~$175-210 | independent | SDK 3.x, 3D tracking |
+| TI IWR6843ISK | ~30-45 m | ~175-310 m | ±60° / ±20° | 15° / 58° | ~$243 | independent | same as AOP |
+| TI AWR2944EVM | ~40-55 m | ~250 m | ±80° az | ~9.5° az | ~$549 | independent | MCU+ SDK (more work) |
+| TI 4-chip cascade (MMWCAS) | ~50-70 m | 350 m+ | ±70° / ±30° | 1.4° az | $1,300-6,800 + DSP board | coherent LO | heavy (Studio/MATLAB) |
+| Infineon BGT60TR13C / Acconeer XE121 | ~5-10 m | – | 60-90° | coarse / none | ~$100-230 | independent | vendor SDKs |
+
+**Recommendation:**
+1. **Aircraft scatter:** use **ADS-B**, not radar. It is 100× the reach, passive and about $40.
+2. **Drone fox hunts:** use **KrakenSDR** direction finding for the transmitter, plus **one narrow-beam radar on the boom** for the last 50-80 m. The D3 RS-6843 24-patch is the best of the three picks for that.
+3. **Wide-view radar cue:** the **IWR1843BOOST** is the best of the three. The **IWR6843ISK** is a better 60 GHz buy than the AOPEVM unless you need ±60° elevation. Skip the cascade, BGT60 and Acconeer for this job.
 
 Refresh while online on the P1:
 - `.venv/bin/python scripts/fetch_radio_kb.py --only amsat` updates TLEs and SatNOGS. Do it weekly before satellite work.
@@ -605,4 +625,4 @@ Requirements are pinned with hashes; regenerate them with `uv pip compile requir
 | 0.3.1 | Full README and recovery plan |
 | 0.4.0 | Workshop refocus: host roles, CHIRP radio programming, radio library, build hosts, CC2 printer and slicing, parts library (200 parts, 214 guides), fix mode |
 | 0.5.0 | Off-grid project work: Projects view, repo mirrors and offline git, Outpost PlatformIO and package caches, developer reference (ESP32/LoRa, Heltec V4, AX.25/X.25), Outpost 2.0 (Heltec V4-R8) starter, general chat documented |
-| 0.6.0 | Small-model helpers: context budget and indicator, code index, project notes, small-step mode, rolling summary, trimmed build errors, edit-by-diff; `qwen3.5-9b-8k` with a measured speed sample and Models page; AMSAT pack (satellites, TLEs, Doppler, rig/rotator control, phased arrays, radar tracking, handoff, radar/ADS-B-cued steering, aircraft scatter and contests, NEC-modeled 2 m/70 cm Yagis) |
+| 0.6.0 | Small-model helpers: context budget and indicator, code index, project notes, small-step mode, rolling summary, trimmed build errors, edit-by-diff; `qwen3.5-9b-8k` with a measured speed sample and Models page; AMSAT pack (satellites, TLEs, Doppler, rig/rotator control, phased arrays, radar tracking, handoff, radar/ADS-B-cued steering, aircraft scatter and contests, NEC-modeled 2 m/70 cm Yagis, mmWave radar cueing with `mmwave_cue.py` and a radar/DF comparison) |

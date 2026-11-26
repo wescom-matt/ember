@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -467,3 +468,56 @@ def test_cued_steering_and_yagi_guides() -> None:
         assert word in yagi, word
     ids = {s["id"] for s in fetch_radio_kb.all_sources()}
     assert {"radar-cued-guide", "yagi-guide", "xnec2c-readme", "dump1090-fa-readme", "wiki-yagi-uda-antenna"} <= ids
+    assert {"mmwave-cue-guide", "mmwave-cue-script"} <= ids
+    mm = (root / "mmwave-radar-cueing.md").read_text().lower()
+    for word in (
+        "iwr1843boost",
+        "rs-6843",
+        "iwr6843aopevm",
+        "tlv",
+        "1010",
+        "uniflash",
+        "rotctld",
+        "ads-b",
+        "krakensdr",
+    ):
+        assert word in mm, word
+
+
+def _mm_frame(tlvs: list[tuple[int, bytes]], frame: int = 7) -> bytes:
+    body = b"".join(struct.pack("<2I", k, len(v)) + v for k, v in tlvs)
+    total = 8 + 32 + len(body)
+    return bytes([2, 1, 4, 3, 6, 5, 8, 7]) + struct.pack("<8I", 3, total, 0x6843, frame, 0, 1, len(tlvs), 0) + body
+
+
+def test_mmwave_cue_parse_and_point() -> None:
+    import io
+    import math
+
+    import mmwave_cue as mm
+
+    pts = struct.pack("<4f", 10.0, 10.0, 0.0, -2.0)
+    tgt = struct.pack("<I9f16f2f", 5, 0.0, 100.0, 50.0, 0, 30, 0, 0, 0, 0, *([0.0] * 16), 1.0, 0.9)
+    comp = struct.pack("<5f", 0.01, 0.01, 0.1, 0.5, 1.0) + struct.pack("<2bh2H", 0, 0, -10, 40, 100)
+    raw = b"\x00junk" + _mm_frame([(1, pts)]) + _mm_frame([(1020, comp), (1010, tgt)], 8)
+    got = list(mm.frames(io.BytesIO(raw)))
+    assert [f for f, _ in got] == [7, 8]
+    first = mm.parse_tlvs(got[0][1])
+    assert len(first) == 1 and first[0].x == 10.0 and first[0].tid == -1
+    second = mm.parse_tlvs(got[1][1])  # tracks win over points
+    assert len(second) == 1 and second[0].tid == 5
+    # radar facing east (yaw 90), level: a target straight ahead and 45 deg up is az 90, el ~26.6
+    az, el, rng = mm.az_el(*mm.to_enu(second[0], 90.0, 0.0, 0.0, (0.0, 0.0, 0.0)))
+    assert abs(az - 90.0) < 0.01 and abs(el - math.degrees(math.atan2(50, 100))) < 0.01
+    # point at 45 deg right of boresight, boresight north, pitched up 10 deg
+    az2, el2, _ = mm.az_el(*mm.to_enu(first[0], 0.0, 10.0, 0.0, (0.0, 0.0, 0.0)))
+    assert abs(az2 - 45.0) < 0.5 and 5.0 < el2 < 8.0
+    # lever arm: radar 10 m east of the antenna shifts a close target noticeably
+    az3, _, _ = mm.az_el(*mm.to_enu(first[0], 0.0, 0.0, 0.0, (10.0, 0.0, 0.0)))
+    assert az3 > 55.0
+    f = mm.AlphaBeta()
+    for i in range(20):
+        f.update((350.0 + i) % 360.0, 10.0, float(i))  # 1 deg/s through north
+    paz, _ = f.predict(1.0)
+    assert abs(((paz - 10.0) + 180) % 360 - 180) < 1.5
+    assert mm.pick(first, 2, 500) is first[0] and mm.pick(first, 50, 500) is None
