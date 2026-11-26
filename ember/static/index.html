@@ -38,6 +38,7 @@
     </div>
     <nav id="chat-list" class="chat-list" aria-label="Chats"></nav>
     <div class="side-bottom">
+      <button id="ws-btn" class="btn ghost wide left">Workshop: radio, printer, parts</button>
       <button id="admin-btn" class="btn ghost wide left hidden">Users &amp; admin</button>
       <button id="pw-btn" class="btn ghost wide left">Change password</button>
       <div class="me-row"><span id="me-name" class="me-name"></span><button id="logout-btn" class="btn ghost small">Sign out</button></div>
@@ -94,13 +95,15 @@
     <h4>Targets</h4>
     <table class="users"><thead><tr><th>Name</th><th>Where</th><th>Login</th><th>Host key</th><th>On</th><th></th></tr></thead><tbody id="targets-body"></tbody></table>
     <form id="add-target" class="add-user">
-      <select id="nt-kind"><option value="ssh">SSH</option><option value="local">This computer (P1)</option></select>
+      <span class="presets" id="nt-presets"></span>
+      <select id="nt-kind"><option value="ssh">SSH</option><option value="local">This computer (P1)</option><option value="printer">3D printer (LAN)</option></select>
       <input id="nt-name" placeholder="name (e.g. Mint)" maxlength="40" required>
       <input id="nt-host" class="ssh-only" placeholder="host or IP" maxlength="253">
       <input id="nt-port" class="ssh-only port" type="number" min="1" max="65535" value="22">
-      <input id="nt-user" class="ssh-only" placeholder="user" maxlength="64">
-      <select id="nt-os" class="ssh-only"><option value="linux">Linux (bash)</option><option value="windows">Windows (PowerShell)</option></select>
+      <input id="nt-user" class="ssh-only login-only" placeholder="user" maxlength="64">
+      <select id="nt-os" class="ssh-only login-only"><option value="linux">Linux (bash)</option><option value="windows">Windows (PowerShell)</option></select>
       <select id="nt-cred" class="ssh-only"></select>
+      <input id="nt-roles" placeholder="roles: radio,build,printer,general" maxlength="200" value="general">
       <button class="btn primary" type="submit">Add target</button>
     </form>
     <h4>Credentials</h4>
@@ -120,6 +123,33 @@
   <p id="admin-msg" class="muted small-text" role="status"></p>
 </dialog>
 
+<dialog id="ws-dlg" class="dlg wide">
+  <div class="dlg-head"><div class="tabs"><button class="wtab tab active" data-wtab="radio">Radio</button><button class="wtab tab" data-wtab="printer">Printer &amp; slicing</button><button class="wtab tab" data-wtab="parts">Parts library</button><button class="wtab tab" data-wtab="hosts">Hosts</button></div><button class="btn ghost small" data-close>Close</button></div>
+  <section id="wtab-radio" class="tabpane">
+    <div class="add-user"><select id="rd-host" title="Radio host (has the cable)"></select><button id="rd-ports" type="button" class="btn small">Find ports</button><select id="rd-port-pick"><option value="">port (Find ports)</option></select><span id="rd-helper" class="muted small-text"></span></div>
+    <div id="rd-list"></div>
+    <form id="add-radio" class="add-user"><strong>Add radio</strong><input id="rd-name" placeholder="name (e.g. UV-5R #1)" maxlength="40" required><select id="rd-model"></select><input id="rd-port" placeholder="default port (optional)" maxlength="240"><button class="btn small primary">Add</button></form>
+    <div id="rd-detail"></div>
+  </section>
+  <section id="wtab-printer" class="tabpane hidden">
+    <div class="add-user"><select id="pr-printer" title="Printer"></select><button id="pr-status-btn" type="button" class="btn small primary">Status</button><button id="pr-pause" type="button" class="btn small">Pause</button><button id="pr-resume" type="button" class="btn small">Resume…</button><button id="pr-cancel" type="button" class="btn small danger">Cancel print…</button></div>
+    <div id="pr-status" class="kvbox"></div>
+    <h3>Slice on the build host (OrcaSlicer + Centauri Carbon 2 profile)</h3>
+    <div class="add-user"><select id="pr-build" title="Build host"></select><input id="pr-model" placeholder="model on build host, e.g. ~/models/part.stl" maxlength="300"><select id="pr-nozzle"><option>0.4</option><option>0.2</option><option>0.6</option><option>0.8</option></select><input id="pr-process" placeholder="0.20mm Standard @Elegoo CC2 0.4 nozzle" maxlength="80"><input id="pr-filament" placeholder="Elegoo PLA @ECC2" maxlength="80"><button id="pr-slice" type="button" class="btn small primary">Slice</button></div>
+    <p id="pr-gcode" class="muted"></p>
+    <div class="add-user"><button id="pr-send" type="button" class="btn small hidden">Send to printer…</button><input id="pr-file" placeholder="file on printer (.gcode)" maxlength="120"><button id="pr-start" type="button" class="btn small danger">Start print…</button></div>
+  </section>
+  <section id="wtab-parts" class="tabpane hidden">
+    <form id="pt-search" class="add-user"><input id="pt-q" type="search" placeholder="search parts and repair guides (e.g. hose 13mm, knob, antenna, Voron)" maxlength="200"><button class="btn small primary">Search</button><select id="pt-build" title="Build host for slicing"></select><select id="pt-nozzle"><option>0.4</option><option>0.2</option><option>0.6</option><option>0.8</option></select><span id="pt-stats" class="muted small-text"></span></form>
+    <div id="pt-list"></div>
+  </section>
+  <section id="wtab-hosts" class="tabpane hidden">
+    <p class="muted">Which computer does what. The default applies to everyone (admin); "this chat" overrides it for the open chat.</p>
+    <table class="users"><thead><tr><th>Role</th><th>Default</th><th>This chat</th></tr></thead><tbody id="hs-body"></tbody></table>
+  </section>
+  <p id="ws-msg" class="muted small-text" role="status"></p>
+</dialog>
+
 <dialog id="pw-dlg" class="dlg narrow">
   <form id="pw-form">
     <div class="dlg-head"><h3>Change password</h3><button type="button" class="btn ghost small" data-close>Close</button></div>
@@ -134,5 +164,6 @@
 <script src="/static/vendor/highlight.min.js"></script>
 <script src="/static/markdown.js"></script>
 <script src="/static/app.js"></script>
+<script src="/static/workshop.js"></script>
 </body>
 </html>

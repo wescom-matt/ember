@@ -9,9 +9,12 @@ automatically because every question queries Qdrant live.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Protocol
 
 from ember.httpjson import call_json
+from ember.parts import PartsKB
+from ember.radio_kb import RadioKB
 
 NOMAD_COLLECTION = "nomad_knowledge_base"
 NOMAD_EMBED_MODEL = "nomic-embed-text:v1.5"
@@ -121,9 +124,15 @@ def _snippet(hit: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_registry(ollama_url: str, qdrant_url: str) -> dict[str, KnowledgeBase]:
+def build_registry(ollama_url: str, qdrant_url: str, data_dir: Path | None = None) -> dict[str, KnowledgeBase]:
     nomad = NomadKB(ollama_url, qdrant_url)
-    return {nomad.id: nomad}
+    out: dict[str, KnowledgeBase] = {nomad.id: nomad}
+    if data_dir is not None:
+        radio_kb = RadioKB(data_dir)
+        out[radio_kb.id] = radio_kb
+        parts_kb = PartsKB(data_dir)
+        out[parts_kb.id] = parts_kb
+    return out
 
 
 def describe(registry: dict[str, KnowledgeBase]) -> list[dict[str, str]]:

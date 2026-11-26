@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import ipaddress
 import re
 import sqlite3
 from typing import Any
 
-from ember import config
+from ember import config, roles
 from ember.db import now
 from ember.runner import Secret, TargetSpec
 from ember.vault import Vault, generate_ssh_key
@@ -14,7 +15,7 @@ from ember.vault import Vault, generate_ssh_key
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.-]{0,39}$")
 HOST_RE = re.compile(r"^[A-Za-z0-9.-]{1,253}$|^[0-9a-fA-F:]{2,39}$")
 USER_RE = re.compile(r"^[A-Za-z0-9._\\-]{1,64}$")
-TARGET_COLS = "id, name, kind, host, port, username, os, credential_id, host_fingerprint, enabled"
+TARGET_COLS = "id, name, kind, host, port, username, os, credential_id, host_fingerprint, enabled, roles"
 
 
 def clean_name(raw: str, what: str) -> str:
@@ -72,35 +73,52 @@ def list_targets(conn: sqlite3.Connection, enabled_only: bool) -> list[dict[str,
 
 def validate_target(body: dict[str, Any]) -> dict[str, Any]:
     kind = body.get("kind")
-    if kind not in ("local", "ssh"):
-        raise ValueError("kind must be local or ssh")
+    if kind not in ("local", "ssh", "printer"):
+        raise ValueError("kind must be local, ssh or printer")
     os_type = body.get("os") or "linux"
     if os_type not in ("linux", "windows"):
         raise ValueError("os must be linux or windows")
+    role_list = roles.parse_roles(str(body.get("roles") or ("printer" if kind == "printer" else "general")))
     out = {"name": clean_name(str(body.get("name") or ""), "target"), "kind": kind, "os": os_type,
-           "host": "", "port": 22, "username": "", "credential_id": None}
+           "host": "", "port": 22, "username": "", "credential_id": None, "roles": roles.roles_text(role_list)}
     if kind == "local":
         out["os"] = "linux"
         return out
     host = str(body.get("host") or "").strip()
-    user = str(body.get("username") or "").strip()
-    port = int(body.get("port") or 22)
+    port = int(body.get("port") or (1883 if kind == "printer" else 22))
     if not HOST_RE.fullmatch(host):
         raise ValueError("host must be a hostname or IP address")
-    if not USER_RE.fullmatch(user):
-        raise ValueError("user name has invalid characters")
     if port < 1 or port > 65535:
         raise ValueError("port must be 1-65535")
     cred = body.get("credential_id")
-    out.update(host=host, username=user, port=port, credential_id=int(cred) if cred else None)
+    out.update(host=host, port=port, credential_id=int(cred) if cred else None)
+    if kind == "printer":
+        _check_private_ip(host)
+        out["os"] = "linux"
+        return out
+    user = str(body.get("username") or "").strip()
+    if not USER_RE.fullmatch(user):
+        raise ValueError("user name has invalid characters")
+    out["username"] = user
     return out
+
+
+def _check_private_ip(host: str) -> None:
+    """Printers are LAN devices: only a private IPv4 address is accepted (no names, no internet)."""
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError as exc:
+        raise ValueError("printer host must be its LAN IP address (e.g. 192.168.1.50)") from exc
+    if addr.version != 4 or not addr.is_private or addr.is_loopback:
+        raise ValueError("printer host must be a private LAN IPv4 address")
 
 
 def save_target(conn: sqlite3.Connection, data: dict[str, Any], target_id: int | None) -> int:
     cred = data["credential_id"]
     if cred is not None and not conn.execute("SELECT 1 FROM credentials WHERE id = ?", (cred,)).fetchone():
         raise ValueError("unknown credential")
-    args = (data["name"], data["kind"], data["host"], data["port"], data["username"], data["os"], data["credential_id"])
+    args = (data["name"], data["kind"], data["host"], data["port"], data["username"], data["os"], data["credential_id"],
+            data["roles"])
     clash = conn.execute("SELECT id FROM targets WHERE name = ?", (data["name"],)).fetchone()
     if clash and clash["id"] != target_id:
         raise ValueError("a target with that name exists")
@@ -108,20 +126,23 @@ def save_target(conn: sqlite3.Connection, data: dict[str, Any], target_id: int |
         if conn.execute("SELECT COUNT(*) FROM targets").fetchone()[0] >= config.MAX_TARGETS:
             raise ValueError("target limit reached")
         cur = conn.execute(
-            "INSERT INTO targets(name, kind, host, port, username, os, credential_id, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (*args, now()),
+            "INSERT INTO targets(name, kind, host, port, username, os, credential_id, roles, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (*args, now()),
         )
         return int(cur.lastrowid or 0)
     cur = conn.execute(
         "UPDATE targets SET name = ?, kind = ?, host = ?, port = ?, username = ?, os = ?, credential_id = ?, "
-        "host_fingerprint = '' WHERE id = ?", (*args, target_id),
+        "roles = ?, host_fingerprint = '' WHERE id = ?", (*args, target_id),
     )
     if cur.rowcount != 1:
         raise ValueError("no such target")
     return target_id
 
 
-def resolve(conn: sqlite3.Connection, vault: Vault, target_id: int) -> tuple[TargetSpec, Secret | None]:
+def resolve(
+    conn: sqlite3.Connection, vault: Vault, target_id: int, for_commands: bool = True
+) -> tuple[TargetSpec, Secret | None]:
+    """Load a target and decrypt its credential. for_commands=True refuses printers (they can't run commands)."""
     row = conn.execute(
         "SELECT t.id, t.name, t.kind, t.host, t.port, t.username, t.os, t.host_fingerprint, t.enabled, "  # noqa: S608
         "c.kind AS ckind, c.secret_enc FROM targets t LEFT JOIN credentials c ON c.id = t.credential_id "
@@ -129,6 +150,8 @@ def resolve(conn: sqlite3.Connection, vault: Vault, target_id: int) -> tuple[Tar
     ).fetchone()
     if row is None or not row["enabled"]:
         raise ValueError("target is missing or disabled")
+    if for_commands and row["kind"] == "printer":
+        raise ValueError("a printer can't run commands; use the printer controls")
     spec = TargetSpec(int(row["id"]), row["name"], row["kind"], row["host"], int(row["port"]),
                       row["username"], row["os"], row["host_fingerprint"])
     secret = Secret(row["ckind"], vault.decrypt(row["secret_enc"])) if row["secret_enc"] else None

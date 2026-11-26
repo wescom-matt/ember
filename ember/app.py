@@ -19,6 +19,7 @@ from ember.config import Settings
 from ember.db import audit, connect, init_db, now
 from ember.deps import COOKIE, Admin, User, _check_kb, _check_model, _db, _own_conversation
 from ember.kb import KnowledgeBase, build_registry, describe
+from ember.routes_devices import register_device_routes
 from ember.routes_exec import list_actions, register_exec_routes, start_exec_turn
 from ember.vault import Vault
 
@@ -318,7 +319,9 @@ def create_app(settings: Settings, kbs: dict[str, KnowledgeBase] | None = None) 
     init_db(settings.db_path)
     app = FastAPI(title="Ember", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
-    app.state.kbs = kbs if kbs is not None else build_registry(settings.ollama_url, settings.qdrant_url)
+    if kbs is None:
+        kbs = build_registry(settings.ollama_url, settings.qdrant_url, settings.data_dir)
+    app.state.kbs = kbs
     app.state.vault = Vault(settings.secret_key_file)
 
     @app.middleware("http")
@@ -348,6 +351,7 @@ def create_app(settings: Settings, kbs: dict[str, KnowledgeBase] | None = None) 
     register_chat_routes(app)
     register_admin_routes(app)
     register_exec_routes(app)
+    register_device_routes(app)
     app.mount("/static", StaticFiles(directory=STATIC_DIR, html=False), name="static")
 
     @app.get("/")

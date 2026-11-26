@@ -1,0 +1,7 @@
+pyserial
+requests
+yattag
+suds
+lark
+setuptools
+wheel

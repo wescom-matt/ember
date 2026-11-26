@@ -32,6 +32,12 @@
     return data;
   }
 
+  window.EmberUI = {
+    el: el, api: api,
+    currentChat: function () { return state.current; },
+    isAdmin: function () { return !!(state.me && state.me.is_admin); }
+  };
+
   /* ---------- views ---------- */
   function showLogin() {
     state.me = null;
@@ -481,6 +487,16 @@
     head.appendChild(el("span", "act-status" + (ok ? " ok" : (x.status === "ran" || x.status === "failed" || x.status === "blocked" ? " bad" : "")), statusText(x)));
     card.appendChild(head);
     if (x.reason) card.appendChild(el("div", "act-why", x.reason));
+    if (x.diff) {
+      var dd = el("details", "diff"); dd.open = x.status === "pending";
+      dd.appendChild(el("summary", "", "Changes"));
+      var pre = el("pre", "diff");
+      x.diff.split("\n").forEach(function (line) {
+        var cls = line.charAt(0) === "+" && line.slice(0, 3) !== "+++" ? "d-add" : (line.charAt(0) === "-" && line.slice(0, 3) !== "---" ? "d-del" : "");
+        pre.appendChild(el("span", cls, line + "\n"));
+      });
+      dd.appendChild(pre); card.appendChild(dd);
+    }
     if (x.risk === "risky" && x.risk_reasons && x.risk_reasons.length) card.appendChild(el("div", "act-risk", "Needs your OK: " + x.risk_reasons.join(", ")));
     if (x.status === "pending") {
       var btns = el("div", "act-btns");
@@ -508,7 +524,7 @@
   }
 
   function showTab(name) {
-    document.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t.dataset.tab === name); });
+    document.querySelectorAll(".tab[data-tab]").forEach(function (t) { t.classList.toggle("active", t.dataset.tab === name); });
     ["users", "targets", "audit"].forEach(function (n) { $("tab-" + n).classList.toggle("hidden", n !== name); });
     adminMsg("");
     var load = name === "users" ? loadUsers : (name === "targets" ? loadExecAdmin : loadAudit);
@@ -525,13 +541,15 @@
     body.textContent = "";
     d.targets.forEach(function (t) { body.appendChild(targetRow(t, credName)); });
     renderCreds(d.credentials);
+    renderPresets(d.presets);
     syncTargetForm();
   }
 
   function targetRow(t, credName) {
     var tr = el("tr");
     tr.appendChild(el("td", "", t.name));
-    tr.appendChild(el("td", "", t.kind === "local" ? "This computer" : t.username + "@" + t.host + ":" + t.port + " · " + t.os));
+    var where = t.kind === "local" ? "This computer" : (t.kind === "printer" ? "printer " + t.host : t.username + "@" + t.host + ":" + t.port + " · " + t.os);
+    tr.appendChild(el("td", "", where + " · roles: " + (t.roles || "general")));
     tr.appendChild(el("td", "", t.kind === "local" ? "—" : (credName[t.credential_id] || "none")));
     tr.appendChild(el("td", "fp", t.kind === "local" ? "—" : (t.host_fingerprint || "not seen yet")));
     var on = el("input"); on.type = "checkbox"; on.checked = !!t.enabled;
@@ -570,8 +588,24 @@
   }
 
   function syncTargetForm() {
-    var ssh = $("nt-kind").value === "ssh";
-    document.querySelectorAll("#add-target .ssh-only").forEach(function (n) { n.classList.toggle("hidden", !ssh); });
+    var kind = $("nt-kind").value, remote = kind !== "local";
+    document.querySelectorAll("#add-target .ssh-only").forEach(function (n) { n.classList.toggle("hidden", !remote); });
+    document.querySelectorAll("#add-target .login-only").forEach(function (n) { n.classList.toggle("hidden", kind !== "ssh"); });
+    $("nt-host").placeholder = kind === "printer" ? "printer LAN IP" : "host or IP";
+  }
+
+  function renderPresets(presets) {
+    var box = $("nt-presets"); box.textContent = "";
+    (presets || []).forEach(function (p) {
+      var b = el("button", "btn small ghost", p.name); b.type = "button"; b.title = "Fill the form for " + p.name;
+      b.addEventListener("click", function () {
+        $("nt-name").value = p.name; $("nt-kind").value = p.kind; $("nt-os").value = p.os || "linux";
+        $("nt-roles").value = p.roles || "general"; $("nt-port").value = String(p.port || 22);
+        if (p.username) $("nt-user").value = p.username;
+        syncTargetForm(); $("nt-host").focus();
+      });
+      box.appendChild(b);
+    });
   }
 
   async function setMaster() {
@@ -585,7 +619,7 @@
     ev.preventDefault();
     var body = { name: $("nt-name").value.trim(), kind: $("nt-kind").value, host: $("nt-host").value.trim(),
       port: Number($("nt-port").value) || 22, username: $("nt-user").value.trim(), os: $("nt-os").value,
-      credential_id: Number($("nt-cred").value) || null };
+      credential_id: Number($("nt-cred").value) || null, roles: $("nt-roles").value.trim() || "general" };
     try { await api("POST", "/api/admin/targets", body); $("add-target").reset(); adminMsg("Target added. Use Test to check it."); await loadExecAdmin(); await loadTargets(); }
     catch (e) { adminMsg(e.message); }
   }
@@ -676,7 +710,7 @@
     $("menu-btn").addEventListener("click", openSidebar);
     $("scrim").addEventListener("click", closeSidebar);
     $("admin-btn").addEventListener("click", function () { adminMsg(""); $("admin-dlg").showModal(); showTab("users"); });
-    document.querySelectorAll(".tab").forEach(function (t) { t.addEventListener("click", function () { showTab(t.dataset.tab); }); });
+    document.querySelectorAll(".tab[data-tab]").forEach(function (t) { t.addEventListener("click", function () { showTab(t.dataset.tab); }); });
     $("master-toggle").addEventListener("change", setMaster);
     $("add-target").addEventListener("submit", addTarget);
     $("add-cred").addEventListener("submit", addCred);
@@ -713,6 +747,7 @@
     if (d.view === "login") { showLogin(); return; }
     if (d.open) await openChat(d.open);
     if (d.view === "admin" || d.view === "targets" || d.view === "audit") { $("admin-btn").click(); showTab(d.view === "admin" ? "users" : d.view); }
+    if (["radio", "printer", "parts", "hosts"].indexOf(d.view) >= 0 && window.EmberWorkshop) window.EmberWorkshop.open(d.view);
   }
 
   boot().then(demoStart, function (e) { console.warn(e); });

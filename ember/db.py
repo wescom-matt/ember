@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS credentials (
 CREATE TABLE IF NOT EXISTS targets (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    kind TEXT NOT NULL CHECK (kind IN ('local', 'ssh')),
+    kind TEXT NOT NULL CHECK (kind IN ('local', 'ssh', 'printer')),
     host TEXT NOT NULL DEFAULT '',
     port INTEGER NOT NULL DEFAULT 22,
     username TEXT NOT NULL DEFAULT '',
@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS targets (
     credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
     host_fingerprint TEXT NOT NULL DEFAULT '',
     enabled INTEGER NOT NULL DEFAULT 1,
+    roles TEXT NOT NULL DEFAULT 'general',
     created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS actions (
@@ -110,6 +111,52 @@ CREATE TABLE IF NOT EXISTS actions (
     finished_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_actions_conv ON actions(conversation_id, id);
+"""
+
+# Phase 4: radios and their stored images (files live under data_dir/radios/<id>/).
+SCHEMA_V3 = """
+CREATE TABLE IF NOT EXISTS radios (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    model_key TEXT NOT NULL,
+    port TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS radio_images (
+    id INTEGER PRIMARY KEY,
+    radio_id INTEGER NOT NULL REFERENCES radios(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('backup', 'edited', 'uploaded', 'snapshot')),
+    file_name TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    parent_id INTEGER,
+    note TEXT NOT NULL DEFAULT '',
+    user_id INTEGER,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_radio_images ON radio_images(radio_id, id);
+"""
+
+TARGETS_V3_REBUILD = """
+CREATE TABLE targets_v3 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    kind TEXT NOT NULL CHECK (kind IN ('local', 'ssh', 'printer')),
+    host TEXT NOT NULL DEFAULT '',
+    port INTEGER NOT NULL DEFAULT 22,
+    username TEXT NOT NULL DEFAULT '',
+    os TEXT NOT NULL DEFAULT 'linux' CHECK (os IN ('linux', 'windows')),
+    credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
+    host_fingerprint TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    roles TEXT NOT NULL DEFAULT 'general',
+    created_at INTEGER NOT NULL
+);
+INSERT INTO targets_v3(id, name, kind, host, port, username, os, credential_id, host_fingerprint, enabled, created_at)
+    SELECT id, name, kind, host, port, username, os, credential_id, host_fingerprint, enabled, created_at FROM targets;
+DROP TABLE targets;
+ALTER TABLE targets_v3 RENAME TO targets;
 """
 
 
@@ -143,9 +190,17 @@ def init_db(path: Path) -> None:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(SCHEMA)
         conn.executescript(SCHEMA_V2)
+        _migrate_targets_v3(conn)
+        conn.executescript(SCHEMA_V3)
         _add_column(conn, "users", "can_exec", "INTEGER NOT NULL DEFAULT 0")
         _add_column(conn, "conversations", "exec_on", "INTEGER NOT NULL DEFAULT 0")
         _add_column(conn, "conversations", "target_id", "INTEGER")
+        _add_column(conn, "conversations", "radio_target_id", "INTEGER")
+        _add_column(conn, "conversations", "build_target_id", "INTEGER")
+        _add_column(conn, "conversations", "printer_target_id", "INTEGER")
+        _add_column(conn, "actions", "kind", "TEXT NOT NULL DEFAULT 'command'")
+        _add_column(conn, "actions", "payload", "TEXT NOT NULL DEFAULT ''")
+        _add_column(conn, "actions", "diff", "TEXT NOT NULL DEFAULT ''")
         conn.execute(
             "INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)",
             (str(SCHEMA_VERSION),),
@@ -161,7 +216,22 @@ _ALLOWED_COLUMNS = {
     ("users", "can_exec"),
     ("conversations", "exec_on"),
     ("conversations", "target_id"),
+    ("conversations", "radio_target_id"),
+    ("conversations", "build_target_id"),
+    ("conversations", "printer_target_id"),
+    ("actions", "kind"),
+    ("actions", "payload"),
+    ("actions", "diff"),
 }
+
+
+def _migrate_targets_v3(conn: sqlite3.Connection) -> None:
+    """v2 -> v3: allow kind 'printer' and add roles. SQLite can't alter a CHECK, so rebuild the table."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(targets)")}
+    if "roles" in cols:
+        return
+    conn.execute("PRAGMA foreign_keys = OFF")
+    conn.executescript("BEGIN;" + TARGETS_V3_REBUILD + "COMMIT;")
 
 
 def _add_column(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:

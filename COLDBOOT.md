@@ -15,7 +15,7 @@ Use a 32 GB USB disk. Plug it into the P1. It shows up as something like
 
 ```bash
 cd ~/ember
-./coldboot.sh cache /media/matt/USB/coldboot-cache     # about 12.5 GB; takes 10-20 minutes
+./coldboot.sh cache /media/matt/USB/coldboot-cache     # about 18 GB; takes 20-40 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups     # a few MB
 ```
 
@@ -28,6 +28,10 @@ You end up with:
 | `coldboot-cache/goose/` | Goose 1.59.1 program and desktop .deb | ~0.35 GB |
 | `coldboot-cache/python/` | uv, Python 3.12 and Open Interpreter's packages | ~0.2 GB |
 | `coldboot-cache/ember-wheels/` | Ember's Python packages | ~0.03 GB |
+| `coldboot-cache/buildtools/` | CHIRP, PlatformIO + ESP32 packages, esptool, arduino-cli, OrcaSlicer and ElegooSlicer, Centauri Carbon 2 profiles | ~5.4 GB |
+| `coldboot-cache/parts/` | Parts library: openly licensed 3D models and iFixit guides (cap with `--parts-gb N`, default 3) | ~0.2 GB |
+| `coldboot-cache/radio-kb/` | Radio reference library (band plan, FCC rules, channel lists) | ~7 MB |
+| `coldboot-cache/arduino/` | Arduino ESP32 core, only with `--with-arduino-core` (then use a 64 GB disk) | ~9 GB |
 | `coldboot-cache/ember.bundle` | A full copy of this repo (in case GitHub is unreachable) | small |
 | `coldboot-cache/SHA256SUMS` | Checksums; install checks every file | small |
 | `backups/ember-coldboot-*.tar.gz` + `.sha256` | Ember's database (users, chats, targets, saved logins), its **secret key**, TLS cert, Goose/Interpreter settings | small |
@@ -121,6 +125,12 @@ Forgot the password: `ember reset-password matt`. List accounts: `ember list-use
 ---
 
 ## 6. After the rebuild
+
+- **Radio and build hosts** (Mint, Zorin, Los Gatos): on each Linux host run
+  `bash ~/ember/coldboot/buildhost/install-buildhost.sh --cache /media/USB/coldboot-cache` (or `--radio`/`--build`
+  online), then run the `~/buildhost-sudo-steps.sh` it writes (serial-port group, udev rules, slicer library).
+  On Windows run `coldboot\buildhost\install-buildhost.ps1` (needs internet). On the P1, `./coldboot.sh install
+  --cache DIR` puts back CHIRP, the radio library and the parts library.
 
 - Agent SSH key: make a new one (`~/agent-stack-backup/ssh/AGENT-SSH-KEY.md` explains how).
   Ember's saved target logins come back with the restore.

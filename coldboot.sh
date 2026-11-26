@@ -5,9 +5,11 @@
 #   ./coldboot.sh check                      is everything healthy?
 #   ./coldboot.sh install [--cache DIR] [--dry-run]
 #   ./coldboot.sh install --system           print/write the few steps that need sudo
+#   ./coldboot.sh install --build-host [--cache DIR] [--radio|--build]   radio/build host tools
 #   ./coldboot.sh backup [--out DIR]         Ember DB + secret key + configs -> .tar.gz + SHA256SUMS
 #   ./coldboot.sh restore ARCHIVE [--to DIR] [--dry-run] [--yes]
-#   ./coldboot.sh cache DIR [--skip-models]  fill an offline cache (USB disk)
+#   ./coldboot.sh cache DIR [--skip-models] [--skip-buildtools] [--only-buildtools]
+#                     [--with-arduino-core] [--parts-gb N]   fill an offline cache (USB disk)
 set -euo pipefail
 umask 022
 
@@ -30,6 +32,8 @@ PY_VERSION="3.12"
 MAX_ARCHIVE_FILES=200
 DRY=0
 CACHE=""
+WITH_ARDUINO_CORE=""
+PARTS_GB="3"
 SUDO_LINES=()
 N_PASS=0
 N_WARN=0
@@ -394,6 +398,25 @@ step_ember() {
   [[ "$DRY" == "1" ]] || sha_of "$REPO/requirements.txt" > "$REPO/.venv/.coldboot-requirements.sha256"
 }
 
+step_radio_helper() {
+  say "9b. CHIRP for Ember's radio helper, and the offline radio reference"
+  local opts=(--chirp-only)
+  if [[ -n "$CACHE" ]]; then opts+=(--cache "$CACHE"); fi
+  if [[ "$DRY" == "1" ]]; then opts+=(--dry-run); fi
+  bash "$CB/buildhost/install-buildhost.sh" "${opts[@]}" || warn "CHIRP helper install failed (radio screen will say so)"
+  local parts_dir="$HOME/.local/share/ember/parts"
+  if [[ ! -f "$parts_dir/library.db" && -n "$CACHE" && -f "$CACHE/parts/library.db" ]]; then
+    act "copy parts library from cache" copy_tree "$CACHE/parts" "$parts_dir"
+  fi
+  local kb="$HOME/.local/share/ember/radio-kb"
+  if [[ -f "$kb/index.db" ]]; then info "radio reference present"; return 0; fi
+  if [[ -n "$CACHE" && -f "$CACHE/radio-kb/index.db" ]]; then
+    act "copy radio reference from cache" copy_tree "$CACHE/radio-kb" "$kb"
+  else
+    info "radio reference not built: run '.venv/bin/python scripts/fetch_radio_kb.py' while online"
+  fi
+}
+
 step_nomad_check() {
   say "10. Nomad (reinstalled separately; read-only check)"
   check_qdrant
@@ -453,6 +476,7 @@ cmd_install() {
       --cache) CACHE="$(cd "${2:?--cache needs a dir}" && pwd)"; shift 2 ;;
       --dry-run) DRY=1; shift ;;
       --system) system=1; shift ;;
+      --build-host) shift; exec bash "$CB/buildhost/install-buildhost.sh" ${CACHE:+--cache "$CACHE"} "$@" ;;
       *) die "install: unknown option $1" ;;
     esac
   done
@@ -469,6 +493,7 @@ cmd_install() {
   step_configs
   step_nomad_search
   step_ember
+  step_radio_helper
   step_nomad_check
   if [[ ${#SUDO_LINES[@]} -gt 0 ]]; then write_system_steps; fi
   say "Done. Next: ./coldboot.sh check   (open a new terminal first so PATH is fresh)"
@@ -790,19 +815,100 @@ cache_models() {
   nice -n 19 python3 "$CB/cbmodels.py" export --store "$store" --dest "$dir/models" $names
 }
 
+# Build/radio/printer host tools. PlatformIO and Arduino ESP32 packages are Linux x86-64 only
+# (Windows build hosts fetch theirs online the first time).
+cache_buildtools() {
+  local dir="$1" name venv py
+  say "Build/radio host tools: CHIRP, slicers, arduino-cli, PlatformIO"
+  for name in chirp orca-linux orca-win elegoo-linux elegoo-win arduino-cli-linux arduino-cli-win pio-udev; do
+    cache_pinned "$name" "$dir"
+  done
+  py="$BIN/python$PY_VERSION"
+  have "$py" || py="python3"
+  venv="$(scratch_dir)/tools"
+  "$py" -m venv "$venv"
+  # Linux wheels/sdists only; Windows build hosts install CHIRP/PlatformIO online.
+  "$venv/bin/pip" download -q --require-hashes -r "$CB/buildhost/chirp-requirements.txt" -d "$dir/chirp/wheels" \
+    || warn "CHIRP wheel download failed"
+  "$venv/bin/pip" download -q --require-hashes -r "$CB/buildhost/pio-requirements.txt" -d "$dir/buildhost/pio-wheels" \
+    || warn "PlatformIO wheel download failed"
+  say "PlatformIO ESP32 toolchains + LoRa libraries (Linux)"
+  "$venv/bin/pip" install -q --require-hashes -r "$CB/buildhost/pio-requirements.txt" || { warn "pio install failed"; return 0; }
+  cache_platformio "$dir" "$venv/bin/pio"
+  say "arduino-cli LoRa libraries${WITH_ARDUINO_CORE:+ + ESP32 core} (Linux)"
+  cache_arduino "$dir"
+  say "Centauri Carbon 2 slicer profiles"
+  if [[ -d "$dir/slicers/cc2-profiles/machine" ]]; then info "have CC2 profiles"
+  else python3 "$CB/buildhost/cc2_profiles.py" "$dir/slicers/cc2-profiles" || warn "CC2 profiles failed"; fi
+  cache_parts "$dir"
+  if [[ -f "$HOME/.local/share/ember/radio-kb/index.db" ]]; then
+    say "Offline radio reference"
+    rm -rf "$dir/radio-kb" && cp -a "$HOME/.local/share/ember/radio-kb" "$dir/radio-kb"
+  fi
+}
+
+LORA_LIBS=("jgromes/RadioLib" "mcci-catena/MCCI LoRaWAN LMIC library" "sandeepmistry/LoRa" "mikalhart/TinyGPSPlus" "olikraus/U8g2")
+ARDUINO_LIBS=("RadioLib" "MCCI LoRaWAN LMIC library" "LoRa" "TinyGPSPlus" "U8g2")
+ESP32_INDEX="https://espressif.github.io/arduino-esp32/package_esp32_index.json"
+
+# Parts library: copied whole if it fits under --parts-gb (default 3), else skipped with a warning.
+cache_parts() {
+  local dir="$1" src="$HOME/.local/share/ember/parts" kb cap
+  [[ -f "$src/library.db" ]] || { info "no parts library yet (scripts/parts_import.py seed)"; return 0; }
+  kb="$(du -sk "$src" | cut -f1)"
+  cap="$(awk -v g="$PARTS_GB" 'BEGIN { printf "%d", g * 1024 * 1024 }')"
+  if (( kb > cap )); then warn "parts library is $((kb / 1024)) MB, over --parts-gb $PARTS_GB: not cached"; return 0; fi
+  say "Parts library ($((kb / 1024)) MB)"
+  rm -rf "$dir/parts" && cp -a "$src" "$dir/parts"
+}
+
+cache_platformio() {
+  local dir="$1" pio="$2" proj lib
+  proj="$(scratch_dir)/proj"
+  mkdir -p "$proj/src"
+  printf '#include <Arduino.h>\nvoid setup() {}\nvoid loop() {}\n' > "$proj/src/main.cpp"
+  printf '[env:esp32dev]\nplatform = espressif32\nboard = esp32dev\nframework = arduino\n\n[env:esp32s3]\nplatform = espressif32\nboard = esp32-s3-devkitc-1\nframework = arduino\n' > "$proj/platformio.ini"
+  export PLATFORMIO_CORE_DIR="$dir/buildhost/platformio"
+  (cd "$proj" && "$pio" run -s) || warn "PlatformIO sample build failed (toolchains may be incomplete)"
+  for lib in "${LORA_LIBS[@]}"; do "$pio" pkg install -g -l "$lib" -s || warn "pio lib $lib failed"; done
+  unset PLATFORMIO_CORE_DIR
+  rm -rf "$dir/buildhost/platformio/.cache"   # download leftovers; the installed packages are kept
+}
+
+cache_arduino() {
+  local dir="$1" cli tgz lib
+  tgz="$(get_pinned arduino-cli-linux)" || { warn "no arduino-cli"; return 0; }
+  cli="$(scratch_dir)"
+  tar -xzf "$tgz" -C "$cli" arduino-cli
+  export ARDUINO_DIRECTORIES_DATA="$dir/buildhost/arduino15" ARDUINO_DIRECTORIES_USER="$dir/buildhost/Arduino"
+  export ARDUINO_DIRECTORIES_DOWNLOADS="$dir/buildhost/arduino15/staging"
+  "$cli/arduino-cli" core update-index --additional-urls "$ESP32_INDEX" >/dev/null || warn "arduino index failed"
+  if [[ -n "$WITH_ARDUINO_CORE" ]]; then  # ~7 GB (all ESP32 chip toolchains); PlatformIO already covers ESP32
+    "$cli/arduino-cli" core install esp32:esp32 --additional-urls "$ESP32_INDEX" >/dev/null || warn "esp32 core failed"
+    rm -rf "$ARDUINO_DIRECTORIES_DOWNLOADS"
+  fi
+  for lib in "${ARDUINO_LIBS[@]}"; do "$cli/arduino-cli" lib install "$lib" >/dev/null || warn "arduino lib $lib failed"; done
+  unset ARDUINO_DIRECTORIES_DATA ARDUINO_DIRECTORIES_USER ARDUINO_DIRECTORIES_DOWNLOADS
+}
+
 cmd_cache() {
-  local dir="" skip_models=0
+  local dir="" skip_models=0 buildtools=1 only_tools=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --skip-models) skip_models=1; shift ;;
+      --skip-buildtools) buildtools=0; shift ;;
+      --only-buildtools) only_tools=1; shift ;;
+      --with-arduino-core) WITH_ARDUINO_CORE=1; shift ;;
+      --parts-gb) PARTS_GB="${2:?--parts-gb needs a number}"; shift 2 ;;
       -*) die "cache: unknown option $1" ;;
       *) dir="$1"; shift ;;
     esac
   done
-  [[ -n "$dir" ]] || die "usage: coldboot cache DIR [--skip-models]"
+  [[ -n "$dir" ]] || die "usage: coldboot cache DIR [--skip-models] [--skip-buildtools] [--only-buildtools]"
   install -d "$dir"
   dir="$(cd "$dir" && pwd)"
-  info "free space at $dir: $(df -h --output=avail "$dir" | tail -n 1 | tr -d ' ') (full cache needs about 13 GB)"
+  info "free space at $dir: $(df -h --output=avail "$dir" | tail -n 1 | tr -d ' ') (full cache needs about 18 GB; +9 GB with --with-arduino-core)"
+  if [[ "$only_tools" == "1" ]]; then cache_buildtools "$dir"; cache_sums "$dir"; return 0; fi
   say "Pinned binaries (Ollama, Goose, uv, Python)"
   local name
   for name in ollama goose goose-deb uv uvx cpython; do cache_pinned "$name" "$dir"; done
@@ -810,11 +916,16 @@ cmd_cache() {
   cache_python "$dir"
   cache_ember_wheels "$dir"
   if [[ "$skip_models" == "0" ]]; then say "Models"; cache_models "$dir"; fi
+  if [[ "$buildtools" == "1" ]]; then cache_buildtools "$dir"; fi
   say "Ember repo copy (git bundle) and guide"
   git -C "$REPO" bundle create "$dir/ember.bundle" --all 2>/dev/null || warn "git bundle failed"
   cp -p "$REPO/COLDBOOT.md" "$dir/" 2>/dev/null || true
+  cache_sums "$dir"
+}
+
+cache_sums() {
+  local dir="$1" sums
   say "Checksums"
-  local sums
   sums="$(scratch_dir)/SHA256SUMS"
   (cd "$dir" && find . -type f ! -name SHA256SUMS ! -name '*.part' -printf '%P\0' | sort -z | xargs -0 sha256sum > "$sums")
   mv "$sums" "$dir/SHA256SUMS"

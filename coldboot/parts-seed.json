@@ -1,0 +1,20 @@
+{
+  "_about": "Seed list for Ember's offline parts library. Only openly licensed sources; the license is re-read from GitHub at import time and anything without a license is skipped. Printables/Thingiverse are not scraped (their terms forbid it): download from them by hand and use 'parts_import.py add-file' with the license shown on the page.",
+  "github": [
+    {"repo": "VoronDesign/Voron-2", "ref": "Voron2.4", "include": ["STLs/Tools", "STLs/Spool_Management", "STLs/Test_Prints", "STLs/Z_Endstop", "STLs/Exhaust_Filter", "STLs/Electronics_Bay", "STLs/Panel_Mounting", "STLs/Gantry", "STLs/Z_Drive", "STLs/Z_Idlers"], "group_depth": 2, "category": "corexy", "tags": "voron corexy printer spare parts", "notes": "Voron 2.4 printed parts (CoreXY). ABS/ASA recommended by Voron; 0.4 nozzle, 0.2 mm layers, 40% infill, 4 walls."},
+    {"repo": "VoronDesign/Voron-Tap", "ref": "main", "include": ["OptoTap/STLs", "STLs"], "group_depth": 1, "category": "corexy", "tags": "voron tap probe corexy toolhead", "notes": "Voron Tap nozzle probe parts."},
+    {"repo": "VoronDesign/Voron-0", "ref": "Voron0.2r1", "include": ["STLs"], "group_depth": 2, "category": "corexy", "tags": "voron v0 corexy small printer parts", "notes": "Voron 0.2 printed parts (small CoreXY)."},
+    {"repo": "iinde/slr-remote", "ref": "main", "include": ["case"], "group_depth": 0, "category": "electronics-enclosure", "tags": "heltec lora case enclosure remote", "notes": "Handheld case for a Heltec LoRa board project."},
+    {"repo": "kuaner/esp32-p4-7b-enclosure", "ref": "main", "include": ["output/current"], "group_depth": 0, "category": "electronics-enclosure", "tags": "esp32 waveshare display enclosure", "notes": "Enclosure for the Waveshare ESP32-P4 7in display board."},
+    {"repo": "JimKnopfIoT/HackRF-Display-mount", "ref": "master", "include": [""], "group_depth": 0, "category": "antenna-radio", "tags": "hackrf sdr antenna mount case radio", "notes": "HackRF case and antenna holder."},
+    {"repo": "theonlyakhil/V-Dipole-Antenna-Mount", "ref": "main", "include": [""], "group_depth": 0, "category": "antenna-radio", "tags": "v dipole antenna mount weather satellite noaa", "notes": "V-dipole antenna holder (137 MHz weather satellites)."},
+    {"repo": "arkieguy/Helium-Hotspot-Holster-and-Antenna-Mount", "ref": "master", "include": [""], "group_depth": 0, "category": "antenna-radio", "tags": "lora antenna mount holster hotspot", "notes": "Wall holster with antenna mount for a LoRa hotspot."},
+    {"repo": "JimKnopfIoT/Flexhose-Holder-Omni-1", "ref": "main", "include": [""], "group_depth": 0, "category": "household", "tags": "hose holder clamp", "notes": "Flexible hose holder."}
+  ],
+  "ifixit": {
+    "license": "CC-BY-NC-SA-3.0",
+    "per_query": 12,
+    "queries": ["3D printer", "generator", "chainsaw", "lawn mower", "water heater", "faucet", "toilet", "radio", "flashlight", "solar", "bicycle", "power tool", "refrigerator", "washing machine", "furnace", "car battery", "headlamp", "multimeter"]
+  },
+  "scad": {"dir": "coldboot/parts-scad", "license": "CC0-1.0", "author": "Ember (generated with OpenSCAD)"}
+}

@@ -1,0 +1,116 @@
+[
+ {
+  "name": "Control knob (knurled) - 6 mm D-shaft",
+  "category": "household",
+  "tags": "knob control potentiometer radio stove repair",
+  "notes": "PLA/PETG. Test fit: adjust shaft_d/flat_d in the .scad for your shaft.",
+  "scad": "knob.scad",
+  "stl": [
+   "knob_25mm_6mmD.stl",
+   "knob_35mm_6mmD.stl",
+   "knob_25mm_6.35round_setscrew.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit knob.scad to change sizes."
+ },
+ {
+  "name": "Hose barb reducer",
+  "category": "off-grid",
+  "tags": "hose barb fitting adapter water garden pump",
+  "notes": "PETG/ASA for water; 100% infill, 4+ walls. Low pressure only; use hose clamps.",
+  "scad": "hose_barb.scad",
+  "stl": [
+   "hose_barb_6-8mm.stl",
+   "hose_barb_8-10mm.stl",
+   "hose_barb_10-13mm.stl",
+   "hose_barb_13-19mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit hose_barb.scad to change sizes."
+ },
+ {
+  "name": "Screw-down cable clip",
+  "category": "household",
+  "tags": "cable clip wire clamp holder",
+  "notes": "PETG. Prints flat, no supports.",
+  "scad": "cable_clip.scad",
+  "stl": [
+   "cable_clip_4mm.stl",
+   "cable_clip_6mm.stl",
+   "cable_clip_8mm.stl",
+   "cable_clip_10mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit cable_clip.scad to change sizes."
+ },
+ {
+  "name": "L bracket with gusset (M4)",
+  "category": "household",
+  "tags": "bracket shelf corner angle mount",
+  "notes": "PETG/ASA, 5 walls, 40% infill. Print on its side for strength.",
+  "scad": "l_bracket.scad",
+  "stl": [
+   "l_bracket_30.stl",
+   "l_bracket_40.stl",
+   "l_bracket_50.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit l_bracket.scad to change sizes."
+ },
+ {
+  "name": "Electronics project box (ESP32/LoRa) with SMA hole",
+  "category": "electronics-enclosure",
+  "tags": "enclosure esp32 lora heltec case box sma antenna",
+  "notes": "Inner sizes in the file name. Check board + battery fit first. PETG/ASA outdoors.",
+  "scad": "project_box.scad",
+  "stl": [
+   "project_box_60x35x25.stl",
+   "project_box_70x40x30.stl",
+   "project_box_100x60x40.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit project_box.scad to change sizes."
+ },
+ {
+  "name": "Antenna bracket (SMA bulkhead, mast straps)",
+  "category": "antenna-radio",
+  "tags": "antenna mount sma bracket mast lora gmrs",
+  "notes": "ASA/PETG outdoors. Use stainless hose clamps through the slots.",
+  "scad": "sma_mount.scad",
+  "stl": [
+   "sma_mount_6.6mm.stl",
+   "so239_mount_16mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit sma_mount.scad to change sizes."
+ },
+ {
+  "name": "Belt clip (radios, tools)",
+  "category": "antenna-radio",
+  "tags": "belt clip radio holster",
+  "notes": "PETG; print on its side so layers run along the clip.",
+  "scad": "belt_clip.scad",
+  "stl": [
+   "belt_clip_45mm.stl",
+   "belt_clip_38mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit belt_clip.scad to change sizes."
+ },
+ {
+  "name": "Drilling guide block 3-10 mm",
+  "category": "tools",
+  "tags": "drill guide jig tool",
+  "notes": "Print solid (100% infill).",
+  "scad": "drill_guide.scad",
+  "stl": [
+   "drill_guide.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit drill_guide.scad to change sizes."
+ },
+ {
+  "name": "Handheld radio desk stand",
+  "category": "antenna-radio",
+  "tags": "radio stand holder desk handheld",
+  "notes": "Slot = radio thickness + 1 mm.",
+  "scad": "radio_stand.scad",
+  "stl": [
+   "radio_stand_36mm.stl",
+   "radio_stand_42mm.stl"
+  ],
+  "description": "Parametric OpenSCAD design; edit radio_stand.scad to change sizes."
+ }
+]

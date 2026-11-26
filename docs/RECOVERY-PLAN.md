@@ -52,6 +52,16 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 - `./coldboot.sh backup` / `restore`: saves and brings back Ember's data.
 - `./coldboot.sh cache`: puts everything needed for an offline rebuild on a USB disk.
 
+**Phase 3b, workshop (0.4.0)**
+- Ember's main jobs are now radio programming, code/build/flash, the 3D printer, and installing and fixing computers. Chat still works.
+- **Hosts:** each computer gets roles (radio, build, printer). You pick which one is the active radio or build host (Workshop → Hosts), for everyone or one chat.
+- **Radios:** CHIRP on the radio host. Always backs up first, shows a diff, and asks before uploading. Works for the Baofengs; the AnyTone D868UV and Kenwood TK-271 aren't supported by CHIRP; the IC-7300 is read-only.
+- **Radio library:** band plan, FCC rules and channel lists, offline, with sources.
+- **Printer:** ELEGOO Centauri Carbon 2 on the LAN (LAN-only mode + access code). Status and pause run straight away; start, resume, cancel and upload ask first. Slicing runs offline on the build host.
+- **Parts library:** openly licensed 3D models and iFixit repair guides on the P1. Search, slice, send to the printer.
+- **Fixing:** reads logs, edits config files (shows a diff and keeps a `.bak-ember` copy), restarts services, installs packages; risky steps always ask.
+- **Safety line:** no autonomous weapon targeting or firing code.
+
 ### Important files
 
 | File | Why it matters |
@@ -68,18 +78,18 @@ Step-by-step rebuild guide: [`COLDBOOT.md`](../COLDBOOT.md).
 
 ## Part 2. The USB disk: your insurance
 
-Keep one **32 GB USB disk** in a drawer. Refresh it after big changes, and at least every few months.
+Keep one **32 GB USB disk** (64 GB if you add the Arduino core) in a drawer. Refresh it after big changes, and at least every few months.
 
 On the P1, with the USB plugged in (it appears as something like `/media/matt/USB`):
 
 ```bash
 cd ~/ember
-./coldboot.sh cache  /media/matt/USB/coldboot-cache     # about 12.5 GB, 10-20 minutes
+./coldboot.sh cache  /media/matt/USB/coldboot-cache     # about 18 GB, 20-40 minutes
 ./coldboot.sh backup --out /media/matt/USB/backups      # a few MB, do this often
 ```
 
 What ends up on it:
-- `coldboot-cache/`: the AI models (~10 GB), Ollama, Goose, Python packages, a full copy of the Ember repo (`ember.bundle`), the guide, and checksums for everything.
+- `coldboot-cache/`: the AI models (~10 GB), Ollama, Goose, Python packages, the build and radio tools (~5.4 GB), the parts library and radio library, a full copy of the Ember repo (`ember.bundle`), the guide, and checksums for everything.
 - `backups/ember-coldboot-<date>.tar.gz` and its `.sha256` file: Ember's database and secret key.
 
 > **The backup holds Ember's secret key.** Anyone who has it can read the saved SSH
@@ -159,6 +169,10 @@ ember create-admin matt       # asks for a password, 10+ characters
 ```
 
 Forgot the password: `ember reset-password matt`. List accounts: `ember list-users`.
+
+### Radio, build and printer hosts
+
+Run `coldboot/buildhost/install-buildhost.sh` on each Linux radio/build host (offline with `--cache`), then the sudo steps file it writes. Re-add the printer target (LAN IP + access code) if the database wasn't restored.
 
 ### Re-add targets and SSH keys (only if not restored)
 1. In Ember: **Users & admin → Targets & credentials**. Turn on **Command running**.

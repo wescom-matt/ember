@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ember import config, ollama, targets, tools
+from ember import config, ollama, printer, roles, targets, tools
 from ember.agent import AgentCtx, resume, run_agent, tool_prompt
 from ember.chat import Turn, _event, _retrieve, build_messages, history, run_turn
 from ember.db import audit, connect
@@ -24,7 +24,7 @@ from ember.vault import Vault, VaultError
 LOG = logging.getLogger("ember.exec")
 ACTION_COLS = (
     "id, after_message_id, target_name, command, reason, risk, risk_reasons, status, mode, exit_code, output, "
-    "created_at"
+    "kind, diff, created_at"
 )
 
 
@@ -40,12 +40,18 @@ class CredentialIn(BaseModel):
 
 class TargetIn(BaseModel):
     name: str = Field(min_length=1, max_length=40)
-    kind: str = Field(pattern="^(local|ssh)$")
+    kind: str = Field(pattern="^(local|ssh|printer)$")
     host: str = Field(default="", max_length=253)
     port: int = Field(default=22, ge=1, le=65535)
     username: str = Field(default="", max_length=64)
     os: str = Field(default="linux", pattern="^(linux|windows)$")
     credential_id: int | None = None
+    roles: str = Field(default="", max_length=200)
+
+
+class ActiveIn(BaseModel):
+    role: str = Field(pattern="^(radio|build|printer)$")
+    target_id: int = Field(default=0, ge=0)
 
 
 class TargetPatch(BaseModel):
@@ -88,6 +94,8 @@ def start_exec_turn(
     settings = request.app.state.settings
     with connect(_db(request)) as conn:
         allowed = tools.exec_allowed(conn, user_id)
+        hosts = roles.chat_hosts(conn, turn.conversation_id)
+        names = {r: _target_name(conn, tid) for r, tid in hosts.items() if tid}
         try:
             spec, _secret = targets.resolve(conn, _vault(request), int(target_id or 0))
             del _secret
@@ -95,8 +103,8 @@ def start_exec_turn(
             spec = None
     if not allowed:
         return _fallback(turn, kb, request, "Command running is off (admin switch or your account). Answering only.")
-    if spec is None:
-        return _fallback(turn, kb, request, "Pick a target to run commands on. Answering only.")
+    if spec is None and not (hosts.get("radio") or hosts.get("build")):
+        return _fallback(turn, kb, request, "Pick a target or a radio/build host first. Answering only.")
     try:
         caps = ollama.model_capabilities(settings.ollama_url, turn.model)
     except RuntimeError:
@@ -105,8 +113,13 @@ def start_exec_turn(
         why = f"{turn.model} can't run commands (no tool support); try qwen3.5-9b-4k. Answering only."
         return _fallback(turn, kb, request, why)
     ctx = AgentCtx(settings.db_path, settings.ollama_url, _vault(request), user_id, turn.conversation_id,
-                   after_id, turn.model, turn.think, spec.id)
-    return _exec_stream(ctx, kb, turn.question, tool_prompt(spec))
+                   after_id, turn.model, turn.think, spec.id if spec else 0, hosts=hosts)
+    return _exec_stream(ctx, kb, turn.question, tool_prompt(spec, names))
+
+
+def _target_name(conn: sqlite3.Connection, target_id: int) -> str:
+    row = conn.execute("SELECT name FROM targets WHERE id = ?", (target_id,)).fetchone()
+    return str(row["name"]) if row else ""
 
 
 def _exec_stream(ctx: AgentCtx, kb: KnowledgeBase | None, question: str, prompt: str) -> Iterator[bytes]:
@@ -151,8 +164,27 @@ def register_user_exec_routes(app: FastAPI) -> None:
         with connect(_db(request)) as conn:
             caps = tools.capabilities(conn, user["id"])
             items = targets.list_targets(conn, enabled_only=True) if caps["can_exec"] else []
-        public = [{k: t[k] for k in ("id", "name", "kind", "os", "host")} for t in items]
-        return {"targets": public, **caps}
+            active = {r: roles.global_active(conn, r) for r in roles.ACTIVE_ROLES}
+        public = [{k: t[k] for k in ("id", "name", "kind", "os", "host", "roles")} for t in items]
+        return {"targets": public, "active": active, **caps}
+
+    @app.get("/api/conversations/{conv_id}/hosts")
+    def chat_hosts(conv_id: int, user: User, request: Request) -> dict[str, Any]:
+        with connect(_db(request)) as conn:
+            _own_conversation(conn, conv_id, user["id"])
+            return {"hosts": roles.chat_hosts(conn, conv_id)}
+
+    @app.put("/api/conversations/{conv_id}/hosts")
+    def set_chat_hosts(conv_id: int, body: ActiveIn, user: User, request: Request) -> dict[str, Any]:
+        with connect(_db(request)) as conn:
+            _own_conversation(conn, conv_id, user["id"])
+            if not tools.user_can_exec(conn, user["id"]):
+                raise HTTPException(status_code=403, detail="you can't run commands")
+            try:
+                roles.set_chat_host(conn, conv_id, body.role, body.target_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {"hosts": roles.chat_hosts(conn, conv_id)}
 
     @app.post("/api/actions/{action_id}/decide")
     def decide(action_id: int, body: DecideIn, user: User, request: Request) -> StreamingResponse:
@@ -182,7 +214,20 @@ def register_admin_exec_routes(app: FastAPI) -> None:
                 "exec_enabled": tools.master_on(conn),
                 "targets": targets.list_targets(conn, enabled_only=False),
                 "credentials": targets.list_credentials(conn),
+                "active": {r: roles.global_active(conn, r) for r in roles.ACTIVE_ROLES},
+                "candidates": {r: [c["id"] for c in roles.candidates(conn, r)] for r in roles.ACTIVE_ROLES},
+                "presets": roles.PRESETS,
             }
+
+    @app.put("/api/admin/active-host")
+    def set_active_host(body: ActiveIn, admin: Admin, request: Request) -> dict[str, Any]:
+        with connect(_db(request)) as conn:
+            try:
+                roles.set_global_active(conn, body.role, body.target_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            audit(conn, admin["id"], "active_host", f"{body.role}={body.target_id}")
+            return {"active": {r: roles.global_active(conn, r) for r in roles.ACTIVE_ROLES}}
 
     @app.put("/api/admin/exec")
     def set_master(body: MasterIn, admin: Admin, request: Request) -> dict[str, bool]:
@@ -261,9 +306,12 @@ def register_target_routes(app: FastAPI) -> None:
     def test_target(target_id: int, admin: Admin, request: Request) -> dict[str, Any]:
         with connect(_db(request)) as conn:
             try:
-                spec, secret = targets.resolve(conn, _vault(request), target_id)
+                spec, secret = targets.resolve(conn, _vault(request), target_id, for_commands=False)
             except (ValueError, VaultError) as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if spec.kind == "printer":
+            del secret
+            return _test_printer(spec.host)
         probe = "Write-Output ember-ok" if spec.os == "windows" else "echo ember-ok"
         if spec.kind == "local":
             result = run_local(probe, config.SSH_CONNECT_TIMEOUT_SEC)
@@ -285,7 +333,7 @@ def register_target_routes(app: FastAPI) -> None:
         n = max(1, min(limit, 1000))
         with connect(_db(request)) as conn:
             actions = conn.execute(
-                "SELECT a.id, a.created_at, a.finished_at, u.username, a.target_name, a.command, a.risk, "
+                "SELECT a.id, a.created_at, a.finished_at, u.username, a.target_name, a.kind, a.command, a.risk, "
                 "a.risk_reasons, a.status, a.mode, a.exit_code FROM actions a LEFT JOIN users u ON u.id = a.user_id "
                 "ORDER BY a.id DESC LIMIT ?", (n,),
             ).fetchall()
@@ -294,6 +342,17 @@ def register_target_routes(app: FastAPI) -> None:
                 "ORDER BY e.id DESC LIMIT ?", (n,),
             ).fetchall()
         return {"actions": [dict(r) for r in actions], "events": [dict(r) for r in events]}
+
+
+def _test_printer(host: str) -> dict[str, Any]:
+    """Printer test = UDP discovery only (no login), shows model and firmware."""
+    try:
+        info = printer.discover(host, timeout=4.0)
+    except (printer.PrinterError, OSError, ValueError) as exc:
+        return {"ok": False, "output": f"no answer from printer: {str(exc)[:200]}", "fingerprint": ""}
+    keys = ("machine_name", "machine_model", "firmware_version", "token_status", "lan_status")
+    text = ", ".join(f"{k}={info.get(k)}" for k in keys if k in info)
+    return {"ok": True, "output": text or "printer answered", "fingerprint": ""}
 
 
 def register_exec_routes(app: FastAPI) -> None:

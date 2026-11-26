@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import shlex
 from dataclasses import dataclass, field
+from typing import Any
 
 from ember import config
 
@@ -272,6 +273,39 @@ WIN_KNOWN = frozenset(
 )
 WIN_DELETE = frozenset(["remove-item", "rm", "del", "erase", "rd", "rmdir", "ri"])
 WIN_WRITE = frozenset(["set-content", "add-content", "out-file", "new-item", "copy-item", "move-item", "mkdir", "md"])
+SLICERS = frozenset([
+    "orca-slicer", "orcaslicer", "orcaslicer.appimage", "elegooslicer", "elegoo-slicer", "elegooslicer.appimage",
+    "prusa-slicer", "prusaslicer", "prusaslicer.appimage", "orca-slicer.exe", "elegooslicer.exe",
+    "prusa-slicer-console.exe",
+])
+CHIRP_EDIT = ("--upload-mmap", "--set-mem", "--clear-mem", "--copy-mem")
+
+
+def _chirpc(args: list[str], risk: Risk) -> None:
+    """chirpc: downloads and reads are safe; writing to a radio is risky."""
+    low = [a.lower() for a in args]
+    serial = ""
+    for i, a in enumerate(low):
+        if a.startswith("--serial="):
+            serial = a.split("=", 1)[1]
+        elif a in ("-s", "--serial") and i + 1 < len(low):
+            serial = low[i + 1]
+    if "--upload-mmap" in low:
+        risk.flag("writes a channel image to a radio")
+    elif serial not in ("", "mmap") and any(a.startswith(CHIRP_EDIT) for a in low):
+        risk.flag("changes channels on a connected radio")
+
+
+def _slicer(args: list[str], home: str, risk: Risk, outside: Any) -> None:
+    """Slicing is a build step; flag only output written outside home."""
+    for i, a in enumerate(args):
+        value = a.split("=", 1)[1] if a.startswith("--") and "=" in a else ""
+        if a in ("--outputdir", "--output", "-o", "--export-gcode") and i + 1 < len(args):
+            value = args[i + 1]
+        if value and outside(value, home):
+            risk.flag(f"slicer writes outside home ({value[:80]})")
+
+
 LINUX_WRITE = frozenset(["mkdir", "touch", "cp", "mv", "ln", "rm", "tee", "tar", "unzip"])
 
 
@@ -385,6 +419,13 @@ def _linux_segment(seg: list[str], home: str, risk: Risk) -> None:
             return
         risk.flag(LINUX_RISKY[cmd])
         return
+    if cmd == "chirpc":
+        _chirpc(args, risk)
+        _check_paths([a.split("=", 1)[1] for a in args if a.startswith("--mmap=")], home, risk, "writes outside home")
+        return
+    if cmd.lower() in SLICERS:
+        _slicer(args, home, risk, _outside_home)
+        return
     if cmd not in LINUX_KNOWN:
         risk.flag(f"unknown command '{cmd[:40]}'")
         return
@@ -489,6 +530,13 @@ def _windows_segment(seg: list[str], home: str, risk: Risk) -> None:
     args = [a.lower() for a in seg[1:]]
     if cmd in WIN_RISKY:
         risk.flag(WIN_RISKY[cmd])
+        return
+    base = cmd.replace("/", "\\").rsplit("\\", 1)[-1]
+    if base in ("chirpc", "chirpc.exe"):
+        _chirpc(seg[1:], risk)
+        return
+    if base in SLICERS:
+        _slicer(seg[1:], home, risk, _win_outside_home)
         return
     if cmd.startswith("get-") or cmd in WIN_KNOWN:
         if cmd in WIN_DELETE and any(a in ("-recurse", "-r", "/s", "/q", "-force") for a in args):

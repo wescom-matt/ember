@@ -1,8 +1,8 @@
 # Ember and ColdBoot
 
-**Version 0.3.1** · private repo `wescom-matt/ember` · runs on the Nomad box (ThinkPad P1, `think-pad-p1`, 192.168.1.177)
+**Version 0.4.0** · private repo `wescom-matt/ember` · runs on the Nomad box (ThinkPad P1, `think-pad-p1`, 192.168.1.177)
 
-- **Ember** is an offline chat assistant with a Grok Bot-style web interface. You use it from any browser on the home network. It talks to the local Ollama models and the Nomad knowledge base and never contacts the internet. It can also run commands on the P1 and on other computers, with safety checks.
+- **Ember** is an offline workshop assistant with a web interface you open from any browser on the home network. Its main jobs: **program radios** (CHIRP), **write and flash code** (PlatformIO, arduino-cli, esptool), **run the 3D printer** (ELEGOO Centauri Carbon 2) with offline slicing and a parts library, and **install, configure and fix** computers, with safety checks on every command. Chat and Nomad library questions are still there. It uses the local Ollama models and never contacts the internet.
 - **ColdBoot** (`coldboot.sh`) rebuilds the whole P1 agent stack and Ember with one command, even offline from a USB disk. It also checks health and backs up and restores Ember's data.
 
 | Document | What's in it |
@@ -20,14 +20,15 @@
 4. [Install](#4-install)
 5. [Using Ember](#5-using-ember)
 6. [Running commands safely](#6-running-commands-safely)
-7. [Security model](#7-security-model)
-8. [ColdBoot](#8-coldboot)
-9. [Backup and restore](#9-backup-and-restore)
-10. [Offline cache](#10-offline-cache)
-11. [Where things live](#11-where-things-live)
-12. [Repo layout](#12-repo-layout)
-13. [Development](#13-development)
-14. [Version history](#14-version-history)
+7. [Workshop: radios, printer, parts, hosts](#7-workshop-radios-printer-parts-hosts)
+8. [Security model](#8-security-model)
+9. [ColdBoot](#9-coldboot)
+10. [Backup and restore](#10-backup-and-restore)
+11. [Offline cache](#11-offline-cache)
+12. [Where things live](#12-where-things-live)
+13. [Repo layout](#13-repo-layout)
+14. [Development](#14-development)
+15. [Version history](#15-version-history)
 
 ---
 
@@ -61,7 +62,17 @@ The 4k models are the base models with `num_ctx 4096` so they fit the 4 GB T1000
 - A risk classifier: read-only commands run automatically, risky ones wait for **Run** / **Cancel**.
 - Master switch (off by default), per-user **Run commands** permission, and an audit log.
 
-**ColdBoot (phase 3, 0.3.0):** rebuild, health check, backup/restore and offline cache (sections 8-10).
+**ColdBoot (phase 3, 0.3.0):** rebuild, health check, backup/restore and offline cache (sections 9-11).
+
+**Workshop refocus (0.4.0)** (section 7)
+- **Host roles:** each target has roles (`radio`, `build`, `printer`, `general` or your own words). Pick the active radio and build host for everyone (Workshop → Hosts) or just for one chat. Defaults: radio host Mint → Zorin → Los Gatos; build host Los Gatos → Mint.
+- **Radio programming** with CHIRP on the radio host: find the port, back up, view and edit channels, see a diff, confirm, upload.
+- **Radio reference library** (offline, cited): ARRL band plan, FCC Parts 95 and 97, marine and NOAA weather channels and more.
+- **Code, build and flash** on the build host, with flashing always confirmed.
+- **3D printer:** ELEGOO Centauri Carbon 2 status, upload, start, pause, resume and cancel over the LAN; offline slicing with OrcaSlicer and CC2 profiles.
+- **Parts library:** openly licensed STL/3MF/STEP models and iFixit repair guides, searchable in chat; slice and send a part to the printer.
+- **Fix mode:** read logs (`journalctl`), edit config files with a diff and a Confirm card (`write_file`), restart services, install packages (always confirmed).
+- **Safety boundary:** Ember will not write autonomous weapon targeting or firing logic. Cameras, sensors, pan/tilt, alarms and lights or sirens are fine.
 
 ## 3. Architecture
 
@@ -153,9 +164,70 @@ Passwords are never accepted as command-line arguments, printed or logged.
 - PowerShell `Remove-Item -Recurse`, `Format-*`, `Stop-Computer`
 - unknown or unparseable commands
 
-Ember never installs anything on other computers. ESP32 tools are used only if already installed there.
+Ember never installs anything on other computers. ESP32 tools are used only if already installed there (install them yourself with `install-buildhost.sh`).
 
-## 7. Security model
+Also always confirmed: `chirpc --upload-mmap` and memory writes to a real radio port, slicer output outside your home folder, and every `write_file`.
+
+## 7. Workshop: radios, printer, parts, hosts
+
+Open it from the sidebar (**Workshop**). It has four tabs. Every action is in the audit log and needs the master switch and **Run commands** permission.
+
+### Hosts and roles
+- A target's **Roles** field is a comma list: `radio`, `build`, `printer`, `general` or your own words (a-z, 0-9, `-`).
+- Presets in the target form fill in Mint, Zorin (`mwescom`), Los Gatos (Windows) and the Centauri Carbon 2.
+- **Active host:** Workshop → Hosts sets the global radio and build host. Each chat can override it (Hosts tab, "this chat"). If nothing is set, Ember picks the first enabled candidate (radio: Mint, Zorin, Los Gatos; build: Los Gatos, Mint).
+- In chat, the model can run a command `on` the chat target, the radio host or the build host.
+
+### Radio programming (CHIRP)
+Set up the radio host once: `bash ~/ember/coldboot/buildhost/install-buildhost.sh --radio` (Linux, no sudo; it writes `~/buildhost-sudo-steps.sh` for the `dialout` group and udev rules). On Windows use `install-buildhost.ps1`. CHIRP runs from its own venv, pinned to commit `a477ca9`.
+
+Flow: **Find ports** → **Back up** (download; always the first step) → view channels → edit → see the diff against the backup → **Upload** (Confirm card; Ember takes a fresh backup right before writing). Images are stored per radio in `~/.local/share/ember/radios/<id>/` with SHA-256 checks.
+
+| Radio | Support |
+|---|---|
+| Baofeng BF-F8 Plus | Yes (CHIRP `Baofeng_UV-5R` driver) |
+| Baofeng UV-5R | Yes |
+| Baofeng UV-9R Plus | Probably (CHIRP `Baofeng_UV-9R`); the radio's ID check makes a wrong model fail safely |
+| Kenwood TK-271 | No CHIRP driver. Ember offers the `TK-270` family as a try; if that fails, use Kenwood KPG software |
+| AnyTone AT-D868UV | **Not supported** by CHIRP (DMR). Use AnyTone CPS on Windows. Ember can't read, edit or store its codeplug |
+| ICOM IC-7300 | Live CI-V only: Ember can read a text snapshot of memories; no image download/upload |
+
+Ember never invents frequencies: it uses the radio reference library and says when it doesn't know.
+
+### Radio reference library
+`scripts/fetch_radio_kb.py` downloads (online, once) 23 sources and builds a search index at `~/.local/share/ember/radio-kb/index.db` (about 6.5 MB, ~1,000 passages): ARRL band plan; eCFR 47 CFR Part 97 (amateur), Part 95 (GMRS, FRS, MURS, CB), §80.371/80.373 (marine), §87.173 (aviation), §90.20; USCG NAVCEN marine channels; NWS weather radio; NOAA SWPC space weather; and Wikipedia background pages. Pick **Radio** in the knowledge-base menu. Answers cite the source. Rules change; check the date on the source.
+
+### Code, build and flash
+Build host setup: `bash ~/ember/coldboot/buildhost/install-buildhost.sh --build` (PlatformIO 6.2.0, esptool 5.7.0, arduino-cli 1.6.0, OrcaSlicer 2.5.2, ElegooSlicer, CC2 profiles; all user-level, pinned). Or `./coldboot.sh install --build-host --cache DIR` offline. Flashing (`esptool write_flash`, `pio -t upload`, `arduino-cli upload`) always needs Confirm.
+
+### 3D printer: ELEGOO Centauri Carbon 2
+- **How it talks:** the CC2 uses MQTT on port 1883 (user `elegoo`, password = the printer's access code, or `123456` if none) and UDP 52700 for discovery; files go up by HTTP PUT to `/upload`. This was worked out from ELEGOO's open-source slicer and community tools, not an official API document.
+- **Set up the printer:** turn on **LAN-only mode** on the printer screen and note the access code. Add a target of type **Printer** with its LAN IP (private addresses only). Store the access code as a password credential.
+- **Actions:** status and pause run straight away. **Start, resume, cancel and upload need Confirm.**
+- **Slicing:** the build host runs OrcaSlicer's command line with flattened CC2 profiles (`~/.local/share/ember/slicer-profiles/cc2`). Default: `0.20mm Standard @Elegoo CC2 0.4 nozzle`, `Elegoo PLA @ECC2`. The G-code is then uploaded from the build host to the printer.
+
+### Parts library
+- Stored on the P1 in `~/.local/share/ember/parts/` (`library.db` plus `files/<id>/`). Each part has a name, category, source URL, license, author, tags and printer notes. Pick **Parts** in the knowledge-base menu or use Workshop → Parts. **Slice** sends a part to the build host and slices it for the CC2.
+- **Only openly licensed models** (CC, GPL, MIT, public domain). Anything without a clear license is refused.
+- **Seed** (`scripts/parts_import.py seed --max-gb 3`): 64 parts (193 MB) and 214 iFixit guides.
+  - Voron 2.4, Voron 0 and Voron Tap printed parts (GPL-3.0): common CoreXY parts.
+  - Enclosures and mounts from GitHub with verified MIT/GPL licenses (ESP32 display enclosure, antenna and dipole mounts, hose holder, remote).
+  - 9 Ember-made OpenSCAD designs (CC0, 24 STLs): knob, hose barb, cable clip, L bracket, project box, SMA antenna mount, belt clip, drill guide, radio stand.
+  - iFixit guides (CC BY-NC-SA 3.0, attribution kept) for generators, faucets, water heaters, radios, solar, bicycles, tools and more.
+- **Add your own** (on the P1, in `~/ember`): `.venv/bin/python scripts/parts_import.py add-file FILE... --name NAME --category household --license CC-BY-4.0 --source URL`, or `add-url URL --name ... --category ... --license ...`. `list QUERY` and `stats` show what's there. For Printables or Thingiverse, download the file yourself and copy the license shown on the page; Ember doesn't scrape those sites.
+- **Grow it:** add GitHub repos to `coldboot/parts-seed.json`, add iFixit search words, or raise `--max-gb`.
+
+### Fix and install mode
+In a chat with Commands on, ask Ember to fix something. It reads logs (`journalctl -u NAME`, read-only, automatic), proposes file edits with `write_file` (always a Confirm card with a diff; the old file is kept as `*.bak-ember`), restarts services and installs packages (always confirmed). Sudo commands only work where `sudo -n` is allowed; otherwise Ember writes the steps for you.
+
+### Honest limits
+- AT-D868UV: not in CHIRP. TK-271: no driver. IC-7300: live snapshot only. UV-9R Plus: not tested on your radio.
+- CC2 control is built from the open-source protocol and tested against a fake printer, not your printer yet. It needs LAN-only mode. The upload sends the access code over plain HTTP on your LAN (the printer offers nothing better).
+- No license-clear spare parts made specifically for the CC2 were found. ELEGOO's maintenance pages have no open license, so they aren't copied.
+- On Windows build hosts, PlatformIO and CHIRP install online only (the cache holds Linux wheels).
+- The P1 can only reach other hosts after you add them as targets and add Ember's public key there.
+
+## 8. Security model
 
 - **Offline:** backend URLs must be `http://127.0.0.1`; anything else is refused at startup.
 - **Passwords:** argon2id. Logins lock for 5 minutes after 5 failures.
@@ -168,7 +240,7 @@ Ember never installs anything on other computers. ESP32 tools are used only if a
 - **Secrets never go in the repo** (`.gitignore` covers `*.key`, `*.env`, `*.db`, `*.pem`).
 - **Coding rules:** `.cursor/rules/power-of-10.mdc` and `.cursor/rules/secure-coding.mdc` (NASA Power of 10, SEI CERT, Bandit).
 
-## 8. ColdBoot
+## 9. ColdBoot
 
 ```bash
 cd ~/ember
@@ -177,7 +249,8 @@ cd ~/ember
 ./coldboot.sh install --system              # print + save the sudo-only steps
 ./coldboot.sh backup [--out DIR]
 ./coldboot.sh restore ARCHIVE [--to DIR] [--dry-run] [--yes]
-./coldboot.sh cache DIR [--skip-models]
+./coldboot.sh cache DIR [--skip-models] [--skip-buildtools] [--with-arduino-core] [--parts-gb N]
+./coldboot.sh install --build-host [--cache DIR]   # radio/build host tools
 ```
 
 `install` runs as your normal user, never uses sudo, and is safe to re-run. It skips anything already correct and saves any file it changes as `*.bak-coldboot-<date>`. Its steps:
@@ -204,7 +277,7 @@ Downloads are https-only and must match the SHA-256 values in `coldboot/pins.txt
 
 ColdBoot replaces `~/agent-stack-backup/rebuild.sh`. That kit still works, and `coldboot cache` reuses its files.
 
-## 9. Backup and restore
+## 10. Backup and restore
 
 - `backup` writes `ember-coldboot-<host>-<date>.tar.gz` (mode 600) plus a `.sha256` file. Inside are:
   - `ember.db`, copied safely with SQLite's backup API while Ember runs, then integrity-checked. It holds users, chats, targets, host fingerprints, encrypted credentials and the audit log.
@@ -218,7 +291,7 @@ ColdBoot replaces `~/agent-stack-backup/rebuild.sh`. That kit still works, and `
 
   It then stops Ember, keeps replaced files as `*.pre-restore-<date>`, restores and starts Ember again. `--to DIR` restores into a test folder, and `--dry-run` only verifies.
 
-## 10. Offline cache
+## 11. Offline cache
 
 `./coldboot.sh cache /media/matt/USB/coldboot-cache` fills a folder (USB disk) with:
 
@@ -229,12 +302,16 @@ ColdBoot replaces `~/agent-stack-backup/rebuild.sh`. That kit still works, and `
 | `goose/` | Goose 1.59.1 binary and desktop `.deb` | ~0.34 GB |
 | `python/` | uv, uvx, CPython 3.12.16, Open Interpreter wheels and lock file | ~0.21 GB |
 | `ember-wheels/` | Ember's hashed wheels | ~0.01 GB |
+| `buildtools/` | CHIRP (pinned) and its wheels, PlatformIO/esptool wheels, PlatformIO ESP32 packages, arduino-cli, OrcaSlicer and ElegooSlicer AppImages and Windows zips, CC2 profiles | ~5.4 GB |
+| `arduino/` | Arduino ESP32 core (only with `--with-arduino-core`) | ~9 GB |
+| `parts/` | Parts library (capped by `--parts-gb`, default 3) | ~0.2 GB now |
+| `radio-kb/` | Radio reference library | ~7 MB |
 | `ember.bundle` | Full git copy of this repo | <1 MB |
 | `COLDBOOT.md`, `SHA256SUMS` | Guide and checksums | |
 
-**Total about 12.5 GB.** Use a 32 GB USB disk. Then rebuild offline with `./coldboot.sh install --cache /media/matt/USB/coldboot-cache`.
+**Total about 18 GB** (27 GB with the Arduino core). Use a 32 GB USB disk, or 64 GB with the Arduino core. Then rebuild offline with `./coldboot.sh install --cache /media/matt/USB/coldboot-cache`.
 
-## 11. Where things live
+## 12. Where things live
 
 | What | Where |
 |---|---|
@@ -243,6 +320,10 @@ ColdBoot replaces `~/agent-stack-backup/rebuild.sh`. That kit still works, and `
 | TLS cert and key | `~/.config/ember/tls/` (mode 600) |
 | Credential key | `~/.config/ember/secret.key` (mode 600; back it up with the database) |
 | Database | `~/.local/share/ember/ember.db` |
+| Radio images | `~/.local/share/ember/radios/<id>/` |
+| Radio library | `~/.local/share/ember/radio-kb/` |
+| Parts library | `~/.local/share/ember/parts/` |
+| CHIRP, PlatformIO (build hosts) | `~/.local/share/ember/chirp-venv`, `pio-venv`; slicers in `~/.local/opt` |
 | Service | `~/.config/systemd/user/ember.service` |
 | ColdBoot backups (default) | `~/coldboot-backups/` |
 | Sudo steps | `~/coldboot-sudo-steps.sh`, `~/ember-sudo-steps.sh` |
@@ -250,7 +331,7 @@ ColdBoot replaces `~/agent-stack-backup/rebuild.sh`. That kit still works, and `
 | nomad-search | `~/agent-stack/nomad-search` |
 | Older rebuild kit | `~/agent-stack-backup/` |
 
-## 12. Repo layout
+## 13. Repo layout
 
 ```
 ember/                 app code
@@ -263,35 +344,41 @@ ember/                 app code
   auth.py deps.py      passwords, sessions, throttling, request checks
   db.py config.py      SQLite schema and migrations, settings and limits
   kb.py ollama.py httpjson.py prompts.py cli.py
+  roles.py             host roles and the active radio/build host
+  routes_devices.py    Workshop API: radios, printer, parts
+  radio.py radio_helper.py  CHIRP flows / helper run inside the CHIRP venv
+  radio_kb.py parts.py printer.py  radio library, parts library, CC2 client and slicing
   static/              index.html, app.css, app.js, markdown.js, vendor/highlight.js
 bin/ember              helper command
 deploy/                ember.service, ember.env.example
 install.sh             Ember installer (no sudo)
 coldboot.sh            ColdBoot
 coldboot/              models.json, Modelfiles.md, pins.txt, cbmodels.py (model export/import/create)
+coldboot/buildhost/    build-host installers, pinned CHIRP/PlatformIO requirements, cc2_profiles.py
+coldboot/parts-scad/   Ember's CC0 OpenSCAD parts; parts-seed.json lists the seed sources
 coldboot/stack/        templates of the P1 tool configs and a copy of nomad-search
 docs/RECOVERY-PLAN.md  system description and recovery plan
 COLDBOOT.md            rebuild guide
-scripts/make_preview.py  static design previews
+scripts/               make_preview.py, fetch_radio_kb.py, parts_import.py
 tests/                 pytest: app, exec, units, coldboot
 requirements*.in/.txt  pinned, hashed dependencies
 ```
 
-## 13. Development
+## 14. Development
 
 ```bash
 EMBER_DEV=1 ./install.sh
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check . && .venv/bin/mypy ember coldboot/cbmodels.py
 .venv/bin/bandit -q -c pyproject.toml -r ember coldboot
-.venv/bin/shellcheck -x coldboot.sh install.sh bin/ember
+.venv/bin/shellcheck -x coldboot.sh install.sh bin/ember coldboot/buildhost/install-buildhost.sh
 .venv/bin/pip-audit -r requirements.txt
 .venv/bin/python scripts/make_preview.py ~/Desktop/ember-preview
 ```
 
 To regenerate the pins: `uv pip compile requirements.in --python-version 3.12 --generate-hashes -o requirements.txt` (and the same for `-dev`). highlight.js 11.11.1 (BSD-3-Clause) is vendored in `ember/static/vendor/`.
 
-## 14. Version history
+## 15. Version history
 
 | Version | What changed |
 |---|---|
@@ -299,3 +386,4 @@ To regenerate the pins: `uv pip compile requirements.in --python-version 3.12 --
 | 0.2.0 | Commands: targets, encrypted credentials, risk classifier, confirm cards, audit log |
 | 0.3.0 | ColdBoot: rebuild, check, backup/restore, offline cache, COLDBOOT.md |
 | 0.3.1 | Full README, docs/RECOVERY-PLAN.md |
+| 0.4.0 | Workshop refocus: host roles, CHIRP radio programming, radio library, build hosts, CC2 printer and slicing, parts library, fix mode, safety boundary |

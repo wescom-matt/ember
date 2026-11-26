@@ -17,6 +17,7 @@ import time
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
+from typing import Any
 
 import paramiko
 
@@ -126,30 +127,141 @@ def _load_pkey(secret: Secret) -> paramiko.PKey:
     return paramiko.Ed25519Key.from_private_key(StringIO(secret.value))
 
 
+def _connect(target: TargetSpec, secret: Secret, policy: _TofuPolicy) -> paramiko.SSHClient:
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(policy)
+    client.connect(
+        target.host, port=target.port, username=target.username,
+        pkey=_load_pkey(secret) if secret.kind == "key" else None,
+        password=secret.value if secret.kind == "password" else None,
+        timeout=config.SSH_CONNECT_TIMEOUT_SEC, banner_timeout=config.SSH_CONNECT_TIMEOUT_SEC,
+        auth_timeout=config.SSH_CONNECT_TIMEOUT_SEC, allow_agent=False, look_for_keys=False,
+    )
+    return client
+
+
+def _ssh_error(exc: Exception) -> str:
+    if isinstance(exc, HostKeyChanged):
+        return f"refused: {exc}. If the host was reinstalled, an admin can reset its fingerprint."
+    if isinstance(exc, paramiko.AuthenticationException):
+        return "SSH login failed (check the user and that the public key is installed)"
+    return f"SSH error: {type(exc).__name__}: {str(exc)[:200]}"
+
+
 def run_ssh(target: TargetSpec, secret: Secret | None, command: str, timeout_sec: int) -> RunResult:
     if secret is None:
         return RunResult(None, "", "no credential set for this target")
     policy = _TofuPolicy(target.fingerprint)
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(policy)
     remote = windows_wrap(command) if target.os == "windows" else command
+    client: paramiko.SSHClient | None = None
     try:
-        client.connect(
-            target.host, port=target.port, username=target.username,
-            pkey=_load_pkey(secret) if secret.kind == "key" else None,
-            password=secret.value if secret.kind == "password" else None,
-            timeout=config.SSH_CONNECT_TIMEOUT_SEC, banner_timeout=config.SSH_CONNECT_TIMEOUT_SEC,
-            auth_timeout=config.SSH_CONNECT_TIMEOUT_SEC, allow_agent=False, look_for_keys=False,
-        )
+        client = _connect(target, secret, policy)
         result = _exec(client, remote, timeout_sec)
-    except HostKeyChanged as exc:
-        return RunResult(None, "", f"refused: {exc}. If the host was reinstalled, an admin can reset its fingerprint.")
-    except paramiko.AuthenticationException:
-        return RunResult(None, "", "SSH login failed (check the user and that the public key is installed)")
-    except (TimeoutError, paramiko.SSHException, OSError) as exc:
-        return RunResult(None, "", f"SSH error: {type(exc).__name__}: {str(exc)[:200]}")
+    except (HostKeyChanged, paramiko.AuthenticationException, TimeoutError, paramiko.SSHException, OSError) as exc:
+        return RunResult(None, "", _ssh_error(exc))
     finally:
-        client.close()
+        if client is not None:
+            client.close()
+    if not target.fingerprint and policy.seen:
+        result.new_fingerprint = policy.seen
+    return result
+
+
+@dataclass
+class Transfer:
+    ok: bool
+    error: str = ""
+    size: int = 0
+    new_fingerprint: str = ""
+
+
+REMOTE_PATH_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-/~ :\\")
+
+
+def check_remote_path(path: str) -> str:
+    """Accept a plain file path: no '..', no control or shell characters, bounded length."""
+    clean = (path or "").strip()
+    if not clean or len(clean) > 300 or not set(clean) <= REMOTE_PATH_CHARS:
+        raise ValueError("file path has unsupported characters")
+    parts = clean.replace("\\", "/").split("/")
+    if ".." in parts:
+        raise ValueError("file path must not contain '..'")
+    return clean
+
+
+def _sftp_path(target: TargetSpec, path: str) -> str:
+    """SFTP starts in the home folder; '~/x' -> 'x'. Windows drive paths become /C:/..."""
+    p = path.replace("\\", "/")
+    if p.startswith("~/"):
+        return p[2:]
+    if target.os == "windows" and len(p) > 1 and p[1] == ":":
+        return "/" + p
+    return p
+
+
+def _local_path(path: str) -> Path:
+    p = path[2:] if path.startswith("~/") else path
+    return Path(p) if p.startswith("/") else Path.home() / p
+
+
+def fetch_file(target: TargetSpec, secret: Secret | None, remote: str, local: Path, max_bytes: int) -> Transfer:
+    """Copy a file from the target to a local path (size-capped)."""
+    remote = check_remote_path(remote)
+    if target.kind == "local":
+        src = _local_path(remote)
+        if not src.is_file() or src.stat().st_size > max_bytes:
+            return Transfer(False, "file missing or too large")
+        local.write_bytes(src.read_bytes())
+        return Transfer(True, size=local.stat().st_size)
+    return _sftp(target, secret, lambda sftp: _get(sftp, _sftp_path(target, remote), local, max_bytes))
+
+
+def push_file(target: TargetSpec, secret: Secret | None, local: Path, remote: str) -> Transfer:
+    """Copy a local file to the target, creating the parent folder if it is missing."""
+    remote = check_remote_path(remote)
+    if target.kind == "local":
+        dst = _local_path(remote)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(local.read_bytes())
+        return Transfer(True, size=dst.stat().st_size)
+    return _sftp(target, secret, lambda sftp: _put(sftp, local, _sftp_path(target, remote)))
+
+
+def _get(sftp: paramiko.SFTPClient, remote: str, local: Path, max_bytes: int) -> Transfer:
+    size = int(sftp.stat(remote).st_size or 0)
+    if size > max_bytes:
+        return Transfer(False, f"remote file is too large ({size} bytes)")
+    sftp.get(remote, str(local))
+    return Transfer(True, size=size)
+
+
+def _put(sftp: paramiko.SFTPClient, local: Path, remote: str) -> Transfer:
+    parent = remote.rsplit("/", 1)[0] if "/" in remote else ""
+    if parent:
+        try:
+            sftp.stat(parent)
+        except OSError:
+            sftp.mkdir(parent)
+    sftp.put(str(local), remote)
+    return Transfer(True, size=local.stat().st_size)
+
+
+def _sftp(target: TargetSpec, secret: Secret | None, work: Any) -> Transfer:
+    if secret is None:
+        return Transfer(False, "no credential set for this target")
+    policy = _TofuPolicy(target.fingerprint)
+    client: paramiko.SSHClient | None = None
+    try:
+        client = _connect(target, secret, policy)
+        sftp = client.open_sftp()
+        sftp.get_channel().settimeout(config.COMMAND_TIMEOUT_SEC)
+        result: Transfer = work(sftp)
+        sftp.close()
+    except (HostKeyChanged, paramiko.AuthenticationException, TimeoutError, paramiko.SSHException, OSError) as exc:
+        return Transfer(False, _ssh_error(exc))
+    finally:
+        if client is not None:
+            client.close()
     if not target.fingerprint and policy.seen:
         result.new_fingerprint = policy.seen
     return result

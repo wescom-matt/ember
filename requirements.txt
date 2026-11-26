@@ -318,6 +318,10 @@ opentelemetry-api==1.45.2 \
     --hash=sha256:2cbd737377e710ee740d261c94e93fa0f08e6d037c18f17513cc0a2d94479a34 \
     --hash=sha256:d7b0008e21e5fd61cbe7a7f34ca3b6905a78ab677d9bc395e299359c75cda6b4
     # via fastapi
+paho-mqtt==2.2.0 \
+    --hash=sha256:3243630f7c2b05f71d1de8c6f59865eb04d3a59ae8c866e92377faed6753db4d \
+    --hash=sha256:bcf706f03f1f49e0fc3ae166dc7b67ee35463496f8bdfd7c9c36181f6ba635c9
+    # via -r requirements.in
 paramiko==5.1.0 \
     --hash=sha256:239b5f9b2a53006cd54f83cf8495ee742083708ead947882c8dd2786de79f39b \
     --hash=sha256:d9fe6d67a9d0bbf3eb85b051d26ab850b678c02d060f32915b944e5ca6d0d9e1

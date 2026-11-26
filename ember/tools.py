@@ -3,8 +3,9 @@
 - Master switch (admin only, default OFF) in the settings table.
 - A user may run commands if they are an admin or an admin gave them 'can run commands'.
 - Each chat also has its own Commands toggle and selected target.
-- The model gets exactly one tool, run_command, which runs on the chat's selected
-  target. It never sees credentials or target secrets.
+- The model gets run_command and write_file (on the chat's target, the radio
+  host, or the build host) and, if a printer is set up, printer. It never sees
+  credentials or target secrets.
 """
 
 from __future__ import annotations
@@ -16,24 +17,67 @@ from ember.db import get_setting, set_setting
 
 EXEC_KEY = "exec_enabled"
 
+ON_HOST = {"type": "string", "enum": ["chat", "radio", "build"],
+           "description": "Which computer: chat (this chat's target), radio (radio host), build (build host)"}
+
 RUN_COMMAND_TOOL: dict[str, Any] = {
     "type": "function",
     "function": {
         "name": "run_command",
-        "description": (
-            "Run one shell command on the selected target computer and return its output and exit code. "
-            "Linux targets use bash; Windows targets use PowerShell. Risky commands wait for the user to confirm."
-        ),
+        "description": "Run one shell command (bash on Linux, PowerShell on Windows). Risky ones wait for the user.",
         "parameters": {
             "type": "object",
             "properties": {
-                "command": {"type": "string", "description": "The exact command line to run"},
-                "reason": {"type": "string", "description": "One short sentence: why this command"},
+                "command": {"type": "string", "description": "The exact command line"},
+                "reason": {"type": "string", "description": "Why, in one short sentence"},
+                "on": ON_HOST,
             },
             "required": ["command"],
         },
     },
 }
+
+WRITE_FILE_TOOL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "write_file",
+        "description": "Create or replace a text file (config, sketch, script). The user sees a diff and confirms.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "File path, e.g. ~/proj/src/main.cpp"},
+                "content": {"type": "string", "description": "The complete new file content"},
+                "reason": {"type": "string"},
+                "on": ON_HOST,
+            },
+            "required": ["path", "content"],
+        },
+    },
+}
+
+PRINTER_TOOL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "printer",
+        "description": "3D printer: status, files, pause; start/resume/cancel need the user to confirm.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["status", "files", "pause", "start", "resume", "cancel"]},
+                "file": {"type": "string", "description": "G-code file name on the printer (for start)"},
+            },
+            "required": ["action"],
+        },
+    },
+}
+
+
+def offered_tools(has_printer: bool) -> list[dict[str, Any]]:
+    """Few, small schemas: the default model has a 4k-token context."""
+    out = [RUN_COMMAND_TOOL, WRITE_FILE_TOOL]
+    if has_printer:
+        out.append(PRINTER_TOOL)
+    return out
 
 
 def master_on(conn: sqlite3.Connection) -> bool:

@@ -8,3 +8,12 @@ goose-deb 7b96b8bbece0ae71aeb05a2bc2e8cb64f2a1c9cf9956fe06c4e5610bb9541c10 goose
 uv 4a7607589912d9c20e86b860b032f7c7f2913c9a3e76f46aef136885387452b8 python/uv -
 uvx c246ee76ad8d606c9347c2774698654235f2016becd87de559662a33f7d13726 python/uvx -
 cpython 1e1efa4c133c2ee7b1c589e0ef632e190b23c812209771c637eff482064ca2ab python/cpython-3.12.16-linux-x86_64-gnu.tar.zst -
+# --- v0.4.0 build/radio/printer hosts (checksums from the GitHub release digests, 2026-11-25) ---
+chirp bf6d9a4485058b2cae3e3f8c65c2750854d83f7cf38bdadb783baccbb5b6daa2 chirp/chirp-a477ca96150b713490bb19755c9b16c62210aecf.tar.gz https://github.com/kk7ds/chirp/archive/a477ca96150b713490bb19755c9b16c62210aecf.tar.gz
+orca-linux 22fa88884dec3fdbd29e90cba9912fcff6fb57a60b1bdc1a6c189c61a6b0a870 slicers/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.2.AppImage https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v2.5.2/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.2.AppImage
+orca-win 730892ef174b0197e896234b8ade9df184966d2bec80cc83c8522715a25df54f slicers/OrcaSlicer_Windows_V2.5.2_x64_portable.zip https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v2.5.2/OrcaSlicer_Windows_V2.5.2_x64_portable.zip
+elegoo-linux 7b3b3f08e0d0d51bb472c85865d1be9b0c28385423daba1cb0c3b225d0101afc slicers/ElegooSlicer_Linux_V1.5.3.5.AppImage https://github.com/elegooofficial/ElegooSlicer/releases/download/v1.5.3.5/ElegooSlicer_Linux_V1.5.3.5.AppImage
+elegoo-win 0215cd958d6a52ae1bd33a5ad7509ecd1b156baf63fbe04333e04cf0305793e5 slicers/ElegooSlicer_Windows_V1.5.3.5_portable.zip https://github.com/elegooofficial/ElegooSlicer/releases/download/v1.5.3.5/ElegooSlicer_Windows_V1.5.3.5_portable.zip
+arduino-cli-linux 321ee249f44c78053234fec0f36101092bc6021bf24939e15e0cc2449c5ed250 buildhost/arduino-cli_1.6.0_Linux_64bit.tar.gz https://github.com/arduino/arduino-cli/releases/download/v1.6.0/arduino-cli_1.6.0_Linux_64bit.tar.gz
+arduino-cli-win 2769b9b282ce597db9679d8ec14d726d57004ca4205ef4d7a795bf36b6cdc9d8 buildhost/arduino-cli_1.6.0_Windows_64bit.zip https://github.com/arduino/arduino-cli/releases/download/v1.6.0/arduino-cli_1.6.0_Windows_64bit.zip
+pio-udev ab581c9ef8523978f9300bb7687487543a804c9fe70c27ed95df1c9b79aaa0ec buildhost/99-platformio-udev.rules https://raw.githubusercontent.com/platformio/platformio-core/v6.2.0/platformio/assets/system/99-platformio-udev.rules
